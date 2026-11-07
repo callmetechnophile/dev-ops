@@ -14,14 +14,21 @@ class RemediationAction(Base, TimestampMixin, TenantMixin):
     incident_id = Column(GUID(), ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False, index=True)
     failure_id = Column(GUID(), ForeignKey("failures.id", ondelete="SET NULL"), nullable=True)
     action_type = Column(
-        String(50),
+        String(100),
         nullable=False
-    )  # rollback, config_patch, resource_quota_bump, pod_restart, connection_pool_resize
+    )  # ROLLBACK, CONFIG_PATCH, RESOURCE_QUOTA_BUMP, RESTART, DEPENDENCY_PIN
     description = Column(Text, nullable=False)
     runbook_url = Column(String(512), nullable=True)
     estimated_recovery_time_sec = Column(Float, nullable=True)
     is_automated_executable = Column(String(10), default="false", nullable=False)
-    execution_status = Column(String(50), default="PROPOSED", nullable=False)  # PROPOSED, APPROVED, EXECUTED, FAILED
+    proposed_by = Column(String(255), default="SYSTEM", nullable=False)
+    approved_by = Column(String(255), nullable=True)
+    execution_status = Column(String(50), default="RECORDED", nullable=False)  # RECORDED, PROPOSED, APPROVED, EXECUTED, FAILED
+    outcome = Column(String(50), nullable=True)  # SUCCESS, PARTIAL_SUCCESS, FAILED, UNKNOWN
+    effectiveness = Column(String(50), nullable=True)  # HIGH, MEDIUM, LOW, INEFFECTIVE
+
+    incident = relationship("Incident", back_populates="remediations")
+    lessons = relationship("OperationalLesson", back_populates="remediation_action")
 
 
 class RiskAssessment(Base, TimestampMixin, TenantMixin):

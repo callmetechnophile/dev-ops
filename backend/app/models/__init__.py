@@ -5,7 +5,15 @@ from app.models.deployment import Commit, Change, Build, Deployment, Infrastruct
 from app.models.event import Event
 from app.models.webhook_delivery import WebhookDelivery
 from app.models.github_entities import PullRequest, WorkflowRun, WorkflowJob, DeploymentEvent
-from app.models.incident import Incident, Failure, RootCauseHypothesis, ConfirmedRootCause
+from app.models.incident import (
+    Incident,
+    Failure,
+    IncidentEvent,
+    FailureClassification,
+    RootCauseHypothesis,
+    ConfirmedRootCause,
+    OperationalLesson,
+)
 from app.models.intelligence import RemediationAction, RiskAssessment, Recommendation
 from app.models.governance import ApprovalRequest, ApprovalDecision
 from app.models.model_registry import ModelVersion
@@ -34,8 +42,11 @@ __all__ = [
     "DeploymentEvent",
     "Incident",
     "Failure",
+    "IncidentEvent",
+    "FailureClassification",
     "RootCauseHypothesis",
     "ConfirmedRootCause",
+    "OperationalLesson",
     "RemediationAction",
     "RiskAssessment",
     "Recommendation",

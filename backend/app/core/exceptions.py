@@ -9,6 +9,10 @@ class DevOpsIntelligenceError(Exception):
         self.details = details or {}
 
 
+class DomainException(DevOpsIntelligenceError):
+    pass
+
+
 class EntityNotFoundError(DevOpsIntelligenceError):
     pass
 

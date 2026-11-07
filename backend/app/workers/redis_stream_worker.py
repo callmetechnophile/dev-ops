@@ -12,6 +12,8 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.integrations.github.normalizer import normalize_github_event
 from app.services.correlation_engine import correlation_engine
+from app.services.incident_reconstruction import incident_reconstruction_engine
+from app.services.root_cause_engine import root_cause_engine
 from app.models.event import Event
 from app.models.webhook_delivery import WebhookDelivery
 from app.core import metrics
@@ -220,7 +222,21 @@ class RedisStreamWorker:
         elif event_type in ("deployment", "deployment_status") and specific_event:
             await correlation_engine.process_deployment_event(db, tenant_uuid, specific_event)
 
-        # 4. Mark webhook delivery as PROCESSED
+        # 4. Incident Reconstruction & Failure Intelligence (Milestone 3)
+        target_event = db_event if not existing_event else existing_event
+        if target_event:
+            try:
+                incident = await incident_reconstruction_engine.process_event_for_incidents(
+                    db=db,
+                    tenant_id=tenant_uuid,
+                    event_model=target_event,
+                )
+                if incident:
+                    await root_cause_engine.analyze_incident(db, tenant_uuid, incident.id)
+            except Exception as e:
+                logger.error(f"Error during incident reconstruction for event {target_event.id}: {e}", exc_info=True)
+
+        # 5. Mark webhook delivery as PROCESSED
         w_stmt = select(WebhookDelivery).where(
             and_(
                 WebhookDelivery.tenant_id == tenant_uuid,
