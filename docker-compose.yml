@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: devops_intel_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: devops_intelligence
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d devops_intelligence"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops_intel_net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: devops_intel_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devops_intel_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devops_intel_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-production-devops-intel-secure-secret-key-32}
+      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@postgres:5432/devops_intelligence
+      SYNC_DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@postgres:5432/devops_intelligence
+      REDIS_URL: redis://redis:6379/0
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-github-webhook-production-secret}
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    networks:
+      - devops_intel_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: devops_intel_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      BACKEND_INTERNAL_URL: http://backend:8000/api
+    networks:
+      - devops_intel_net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  devops_intel_net:
+    driver: bridge

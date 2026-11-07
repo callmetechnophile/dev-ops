@@ -1,0 +1,64 @@
+import uuid
+from datetime import datetime, timezone
+from sqlalchemy import Column, String, Float, ForeignKey, Index, Text, DateTime
+from sqlalchemy.types import JSON
+from sqlalchemy.orm import relationship
+from app.database import Base
+from app.models.base import GUID, TimestampMixin, TenantMixin
+
+
+class RemediationAction(Base, TimestampMixin, TenantMixin):
+    __tablename__ = "remediation_actions"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    incident_id = Column(GUID(), ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False, index=True)
+    failure_id = Column(GUID(), ForeignKey("failures.id", ondelete="SET NULL"), nullable=True)
+    action_type = Column(
+        String(50),
+        nullable=False
+    )  # rollback, config_patch, resource_quota_bump, pod_restart, connection_pool_resize
+    description = Column(Text, nullable=False)
+    runbook_url = Column(String(512), nullable=True)
+    estimated_recovery_time_sec = Column(Float, nullable=True)
+    is_automated_executable = Column(String(10), default="false", nullable=False)
+    execution_status = Column(String(50), default="PROPOSED", nullable=False)  # PROPOSED, APPROVED, EXECUTED, FAILED
+
+
+class RiskAssessment(Base, TimestampMixin, TenantMixin):
+    __tablename__ = "risk_assessments"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False, index=True)
+    service_id = Column(GUID(), ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True)
+    overall_risk_score = Column(Float, nullable=False)  # 0.00 to 1.00
+    risk_level = Column(String(20), nullable=False, index=True)  # LOW, MEDIUM, HIGH, CRITICAL
+    failure_probability = Column(Float, nullable=True)  # Calibrated ML probability or None if Stage A
+    operational_impact_score = Column(Float, nullable=False)  # Downstream blast radius impact (0.0 to 1.0)
+    rule_score = Column(Float, default=0.0, nullable=False)
+    ml_score = Column(Float, nullable=True)
+    triggered_rules = Column(JSON, default=list, nullable=False)
+    supporting_records = Column(JSON, default=list, nullable=False)
+    evaluated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    deployment = relationship("Deployment", back_populates="risk_assessments")
+    recommendations = relationship("Recommendation", back_populates="risk_assessment", cascade="all, delete-orphan")
+
+
+class Recommendation(Base, TimestampMixin, TenantMixin):
+    __tablename__ = "recommendations"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    risk_assessment_id = Column(GUID(), ForeignKey("risk_assessments.id", ondelete="CASCADE"), nullable=False, index=True)
+    deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False, index=True)
+    recommendation_type = Column(
+        String(50),
+        nullable=False
+    )  # PROCEED_WITH_CANARY, BLOCK_DEPLOYMENT, ROLLBACK_PREPARATION, REQUIRE_CONFIG_REVIEW, SCALE_DOWN
+    title = Column(String(255), nullable=False)
+    rationale = Column(Text, nullable=False)
+    mitigation_steps = Column(JSON, default=list, nullable=False)
+    confidence_score = Column(Float, default=0.8, nullable=False)
+    requires_approval = Column(String(10), default="true", nullable=False)
+
+    risk_assessment = relationship("RiskAssessment", back_populates="recommendations")
+    approval_requests = relationship("ApprovalRequest", back_populates="recommendation")
