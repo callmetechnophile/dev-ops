@@ -17,6 +17,13 @@ from app.models.incident import (
 from app.models.intelligence import RemediationAction, RiskAssessment, Recommendation
 from app.models.governance import ApprovalRequest, ApprovalDecision
 from app.models.model_registry import ModelVersion
+from app.models.agent import (
+    AgentExecution,
+    AgentStateTransition,
+    DeploymentPolicy,
+    PolicyEvaluation,
+    OutcomeObservation,
+)
 
 __all__ = [
     "GUID",
@@ -54,4 +61,9 @@ __all__ = [
     "ApprovalRequest",
     "ApprovalDecision",
     "ModelVersion",
+    "AgentExecution",
+    "AgentStateTransition",
+    "DeploymentPolicy",
+    "PolicyEvaluation",
+    "OutcomeObservation",
 ]

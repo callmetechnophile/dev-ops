@@ -249,23 +249,8 @@ export async function fetchServiceDependencies(serviceId: string) {
   return res.json();
 }
 
-export async function fetchApprovals() {
-  const res = await fetch(`${API_BASE}/approvals`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to fetch approvals");
-  return res.json();
-}
-
 export async function submitApproval(requestId: string, decision: "APPROVED" | "REJECTED", justification: string, userId: string) {
-  const res = await fetch(`${API_BASE}/approvals/${requestId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ decision, justification, user_id: userId }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || "Approval decision submission failed");
-  }
-  return res.json();
+  return submitApprovalDecision(requestId, decision, justification, userId);
 }
 
 export async function fetchEvents() {
@@ -353,5 +338,154 @@ export async function triggerModelTraining() {
 export async function fetchDeploymentImpact(deploymentId: string) {
   const res = await fetch(`${API_BASE}/risk/impact/${deploymentId}`, { cache: "no-store" });
   if (!res.ok) return null;
+  return res.json();
+}
+
+// --------------------------------------------------------------------------
+// Milestone 5: Agent Orchestration, Policies & Approvals
+// --------------------------------------------------------------------------
+
+export async function fetchAgentExecutions(params?: {
+  status?: string;
+  state?: string;
+  environment?: string;
+  page?: number;
+  page_size?: number;
+}) {
+  let url = `${API_BASE}/agent/executions`;
+  const query = new URLSearchParams();
+  if (params?.status) query.append("status", params.status);
+  if (params?.state) query.append("state", params.state);
+  if (params?.environment) query.append("environment", params.environment);
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.page_size) query.append("page_size", String(params.page_size));
+  if (query.toString()) url += `?${query.toString()}`;
+
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch agent executions");
+  return res.json();
+}
+
+export async function fetchAgentExecution(id: string) {
+  const res = await fetch(`${API_BASE}/agent/executions/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Agent execution ${id} not found`);
+  return res.json();
+}
+
+export async function triggerAgentExecution(deploymentId: string, triggerType = "MANUAL_DISPATCH") {
+  const res = await fetch(`${API_BASE}/agent/executions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deployment_id: deploymentId, trigger_type: triggerType }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to trigger agent execution");
+  }
+  return res.json();
+}
+
+export async function fetchExecutionTimeline(id: string) {
+  const res = await fetch(`${API_BASE}/agent/executions/${id}/timeline`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchExecutionRecommendations(id: string) {
+  const res = await fetch(`${API_BASE}/agent/executions/${id}/recommendations`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchExecutionPolicyEvaluations(id: string) {
+  const res = await fetch(`${API_BASE}/agent/executions/${id}/policy-evaluations`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchExecutionOutcomes(id: string) {
+  const res = await fetch(`${API_BASE}/agent/executions/${id}/outcomes`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function advanceExecutionOutcome(id: string, observationWindowMinutes = 60) {
+  const res = await fetch(`${API_BASE}/agent/executions/${id}/advance-outcome?observation_window_minutes=${observationWindowMinutes}`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to advance execution outcome");
+  }
+  return res.json();
+}
+
+export async function fetchDeploymentPolicies() {
+  const res = await fetch(`${API_BASE}/agent/policies`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function createDeploymentPolicy(policy: {
+  name: string;
+  description?: string;
+  policy_version?: string;
+  enabled?: boolean;
+  policy_definition: Record<string, any>;
+}) {
+  const res = await fetch(`${API_BASE}/agent/policies`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(policy),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to create deployment policy");
+  }
+  return res.json();
+}
+
+export async function updateDeploymentPolicy(id: string, updates: Record<string, any>) {
+  const res = await fetch(`${API_BASE}/agent/policies/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to update deployment policy");
+  }
+  return res.json();
+}
+
+export async function fetchApprovals(params?: { status?: string; page?: number; page_size?: number }) {
+  let url = `${API_BASE}/approvals`;
+  const query = new URLSearchParams();
+  if (params?.status) query.append("status", params.status);
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.page_size) query.append("page_size", String(params.page_size));
+  if (query.toString()) url += `?${query.toString()}`;
+
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch approvals");
+  return res.json();
+}
+
+export async function fetchApproval(id: string) {
+  const res = await fetch(`${API_BASE}/approvals/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Approval ${id} not found`);
+  return res.json();
+}
+
+export async function submitApprovalDecision(id: string, action: string, notes: string, userId?: string) {
+  const res = await fetch(`${API_BASE}/approvals/${id}/decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, notes, user_id: userId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to record approval decision");
+  }
   return res.json();
 }

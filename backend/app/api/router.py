@@ -11,6 +11,7 @@ from app.api.v1.repositories import router as repositories_router
 from app.api.v1.workflows import router as workflows_router
 from app.api.v1.events import router as events_router
 from app.api.v1.risk import router as risk_router
+from app.api.v1.agent import router as agent_router
 
 api_router = APIRouter()
 
@@ -23,6 +24,7 @@ api_router.include_router(incidents_router)
 api_router.include_router(services_router)
 api_router.include_router(memory_router)
 api_router.include_router(risk_router)
+api_router.include_router(agent_router)
 api_router.include_router(recommendations_router)
 api_router.include_router(approvals_router)
 api_router.include_router(events_router)

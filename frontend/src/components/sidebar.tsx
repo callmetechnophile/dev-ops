@@ -12,12 +12,15 @@ import {
   BrainCircuit, 
   CheckCheck, 
   Sliders, 
-  Activity 
+  Activity,
+  Bot,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: LayoutDashboard },
+  { label: "Agent Orchestrator", href: "/agent", icon: Bot },
   { label: "Deployments", href: "/deployments", icon: Rocket },
   { label: "Build History", href: "/builds", icon: Layers },
   { label: "Risk Assessment", href: "/risk", icon: AlertTriangle },
@@ -25,6 +28,7 @@ const NAV_ITEMS = [
   { label: "Dependency Map", href: "/dependencies", icon: GitFork },
   { label: "Operational Memory", href: "/memory", icon: BrainCircuit },
   { label: "Approval Center", href: "/approvals", icon: CheckCheck },
+  { label: "Deployment Policies", href: "/settings/policies", icon: ShieldCheck },
   { label: "Integrations", href: "/settings", icon: Sliders },
 ];
 

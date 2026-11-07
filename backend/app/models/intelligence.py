@@ -72,15 +72,21 @@ class Recommendation(Base, TimestampMixin, TenantMixin):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     risk_assessment_id = Column(GUID(), ForeignKey("risk_assessments.id", ondelete="CASCADE"), nullable=False, index=True)
     deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False, index=True)
+    execution_id = Column(GUID(), ForeignKey("agent_executions.id", ondelete="SET NULL"), nullable=True, index=True)
     recommendation_type = Column(
         String(50),
         nullable=False
     )  # PROCEED_WITH_CANARY, BLOCK_DEPLOYMENT, ROLLBACK_PREPARATION, REQUIRE_CONFIG_REVIEW, SCALE_DOWN
     title = Column(String(255), nullable=False)
     rationale = Column(Text, nullable=False)
+    explanation = Column(Text, nullable=True)
+    evidence_references = Column(JSON, default=dict, nullable=False)
+    confidence_level = Column(String(20), default="MEDIUM", nullable=False)
+    status = Column(String(50), default="PROPOSED", nullable=False)  # PROPOSED, ACCEPTED, REJECTED, SUPERSEDED
     mitigation_steps = Column(JSON, default=list, nullable=False)
     confidence_score = Column(Float, default=0.8, nullable=False)
     requires_approval = Column(String(10), default="true", nullable=False)
 
     risk_assessment = relationship("RiskAssessment", back_populates="recommendations")
     approval_requests = relationship("ApprovalRequest", back_populates="recommendation")
+    agent_execution = relationship("AgentExecution", back_populates="recommendations")
