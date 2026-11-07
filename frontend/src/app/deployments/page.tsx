@@ -1,8 +1,20 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Rocket, ShieldAlert, GitCommit, Clock, CheckCircle2, AlertOctagon } from "lucide-react";
-import { fetchDeployments, fetchDeploymentRisk } from "@/lib/api";
+import { 
+  Rocket, 
+  ShieldAlert, 
+  GitCommit, 
+  Clock, 
+  CheckCircle2, 
+  AlertOctagon, 
+  GitPullRequest, 
+  PlayCircle, 
+  User, 
+  CheckCheck,
+  Calendar
+} from "lucide-react";
+import { fetchDeployments, fetchDeploymentRisk, fetchDeploymentTimeline } from "@/lib/api";
 import { StatusBadge } from "@/components/status-badge";
 import { RiskMeter } from "@/components/risk-meter";
 import { formatDate } from "@/lib/utils";
@@ -10,6 +22,7 @@ import { formatDate } from "@/lib/utils";
 export default function DeploymentsPage() {
   const [deployments, setDeployments] = useState<any[]>([]);
   const [selectedDeployment, setSelectedDeployment] = useState<any | null>(null);
+  const [timelineData, setTimelineData] = useState<any | null>(null);
   const [riskData, setRiskData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,15 +46,20 @@ export default function DeploymentsPage() {
 
   useEffect(() => {
     if (!selectedDeployment) return;
-    async function loadRisk() {
+    async function loadDetails() {
       try {
-        const r = await fetchDeploymentRisk(selectedDeployment.id);
-        setRiskData(r);
+        const [r, tl] = await Promise.allSettled([
+          fetchDeploymentRisk(selectedDeployment.id),
+          fetchDeploymentTimeline(selectedDeployment.id)
+        ]);
+        if (r.status === "fulfilled") setRiskData(r.value);
+        if (tl.status === "fulfilled") setTimelineData(tl.value);
       } catch {
         setRiskData(null);
+        setTimelineData(null);
       }
     }
-    loadRisk();
+    loadDetails();
   }, [selectedDeployment]);
 
   return (
@@ -52,7 +70,7 @@ export default function DeploymentsPage() {
           Deployment History & Provenance
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Immutable ledger of CI/CD triggers, state transitions, and associated operational risk evaluations.
+          Deterministic lifecycle tracking from commit, pull request, and CI workflow run to deployment events.
         </p>
       </div>
 
@@ -65,7 +83,7 @@ export default function DeploymentsPage() {
 
           {deployments.length === 0 ? (
             <div className="p-8 text-center border border-dashed border-border rounded text-xs text-muted-foreground font-mono">
-              No deployments recorded.
+              No deployments recorded. Connect GitHub webhooks to capture deployment events.
             </div>
           ) : (
             <div className="space-y-2">
@@ -84,7 +102,7 @@ export default function DeploymentsPage() {
                     <StatusBadge status={d.status} />
                   </div>
                   <div className="mt-1 text-[11px] text-muted-foreground truncate">
-                    SHA: {d.commit_sha.slice(0, 8)}...
+                    SHA: {d.commit_sha.slice(0, 8)}... {d.creator_login ? `(@${d.creator_login})` : ""}
                   </div>
                   <div className="mt-1 text-[10px] text-muted-foreground">
                     {formatDate(d.created_at)}
@@ -95,7 +113,7 @@ export default function DeploymentsPage() {
           )}
         </div>
 
-        {/* Selected Deployment Detail & Risk Inspector */}
+        {/* Selected Deployment Detail & Timeline */}
         <div className="lg:col-span-2 space-y-4">
           {selectedDeployment ? (
             <div className="p-5 rounded-lg bg-card border border-border space-y-5">
@@ -122,8 +140,8 @@ export default function DeploymentsPage() {
                   <span className="text-foreground font-semibold">{selectedDeployment.environment}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block text-[10px] uppercase">Triggered By</span>
-                  <span className="text-foreground">{selectedDeployment.triggered_by}</span>
+                  <span className="text-muted-foreground block text-[10px] uppercase">Creator</span>
+                  <span className="text-foreground">{selectedDeployment.creator_login ? `@${selectedDeployment.creator_login}` : selectedDeployment.triggered_by}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[10px] uppercase">Commit SHA</span>
@@ -136,9 +154,57 @@ export default function DeploymentsPage() {
                 <div>
                   <span className="text-muted-foreground block text-[10px] uppercase">Duration</span>
                   <span className="text-foreground">
-                    {selectedDeployment.duration_seconds ? `${selectedDeployment.duration_seconds}s` : "Pending"}
+                    {selectedDeployment.duration_seconds ? `${selectedDeployment.duration_seconds.toFixed(1)}s` : "Pending"}
                   </span>
                 </div>
+              </div>
+
+              {/* Timeline Section (Section 9.D) */}
+              <div className="pt-4 border-t border-border space-y-3 font-mono">
+                <div className="text-xs uppercase font-semibold text-foreground flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-accent" />
+                  Chronological Deployment Timeline
+                </div>
+
+                {timelineData && timelineData.timeline && timelineData.timeline.length > 0 ? (
+                  <div className="relative pl-6 space-y-4 border-l-2 border-border ml-2 my-2">
+                    {timelineData.timeline.map((step: any, idx: number) => {
+                      let icon = <GitCommit className="h-3.5 w-3.5 text-sky-400" />;
+                      if (step.step_type === "pr_merged") icon = <GitPullRequest className="h-3.5 w-3.5 text-purple-400" />;
+                      if (step.step_type === "workflow_run") icon = <PlayCircle className="h-3.5 w-3.5 text-accent" />;
+                      if (step.step_type === "approval") icon = <CheckCheck className="h-3.5 w-3.5 text-emerald-400" />;
+                      if (step.step_type === "deployment_event") icon = <Rocket className="h-3.5 w-3.5 text-amber-400" />;
+
+                      return (
+                        <div key={idx} className="relative group">
+                          <div className="absolute -left-[31px] top-0 p-1 rounded-full bg-card border border-border">
+                            {icon}
+                          </div>
+                          <div className="p-3 rounded bg-background/50 border border-border text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground">{step.title}</span>
+                              <span className="text-[10px] text-muted-foreground">{formatDate(step.timestamp)}</span>
+                            </div>
+                            {step.description && (
+                              <div className="text-[11px] text-muted-foreground">
+                                {step.description}
+                              </div>
+                            )}
+                            {step.actor && (
+                              <div className="text-[10px] text-muted-foreground">
+                                Actor: @{step.actor}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center border border-dashed border-border rounded text-xs text-muted-foreground font-mono">
+                    Awaiting correlation events for this deployment cycle.
+                  </div>
+                )}
               </div>
 
               {/* Associated Risk Intelligence */}
@@ -150,62 +216,10 @@ export default function DeploymentsPage() {
 
                 {riskData ? (
                   <div className="p-4 rounded border border-border bg-background/50 space-y-4 font-mono text-xs">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <RiskMeter score={riskData.overall_risk_score} label="Overall Risk Assessment" />
-                      <div className="space-y-1">
-                        <span className="text-muted-foreground block text-[10px] uppercase">Failure Probability</span>
-                        <span className="text-foreground font-bold">
-                          {riskData.failure_probability !== null
-                            ? `${(riskData.failure_probability * 100).toFixed(1)}% (Calibrated)`
-                            : "Heuristic Stage A (Deterministic)"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Triggered Rules */}
-                    {riskData.triggered_rules && riskData.triggered_rules.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                          Triggered Operational Rules
-                        </span>
-                        {riskData.triggered_rules.map((rule: any, idx: number) => (
-                          <div key={idx} className="p-2.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300">
-                            <div className="font-bold flex items-center justify-between">
-                              <span>{rule.rule_id}</span>
-                              <span className="text-[10px] uppercase">{rule.severity}</span>
-                            </div>
-                            <div className="text-[11px] text-amber-200/80 mt-1">
-                              {rule.description}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Recommendations */}
-                    {riskData.recommendations && riskData.recommendations.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                          Agent Recommendations
-                        </span>
-                        {riskData.recommendations.map((rec: any) => (
-                          <div key={rec.id} className="p-3 rounded bg-card border border-border space-y-1">
-                            <div className="font-bold text-accent">{rec.title}</div>
-                            <div className="text-muted-foreground text-[11px]">{rec.rationale}</div>
-                            {rec.mitigation_steps && (
-                              <ul className="list-disc pl-4 text-[11px] text-muted-foreground pt-1 space-y-0.5">
-                                {rec.mitigation_steps.map((step: string, i: number) => (
-                                  <li key={i}>{step}</li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <RiskMeter score={riskData.overall_risk_score} label="Overall Risk Assessment" />
                   </div>
                 ) : (
-                  <div className="p-6 text-center border border-dashed border-border rounded text-xs text-muted-foreground font-mono">
+                  <div className="p-4 text-center border border-dashed border-border rounded text-xs text-muted-foreground font-mono">
                     No risk assessment generated yet for this deployment cycle.
                   </div>
                 )}
@@ -213,7 +227,7 @@ export default function DeploymentsPage() {
             </div>
           ) : (
             <div className="p-12 text-center border border-dashed border-border rounded text-xs text-muted-foreground font-mono">
-              Select a deployment from the left panel to inspect details.
+              Select a deployment from the left panel to inspect details and timeline.
             </div>
           )}
         </div>

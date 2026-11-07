@@ -53,7 +53,7 @@ async def test_github_webhook_hmac_and_idempotency(client: AsyncClient):
     assert res1.status_code == 200
     data1 = res1.json()
     assert data1["accepted"] is True
-    assert data1["status"] == "ingested"
+    assert data1["status"] in ("queued", "ingested_local", "processed_local")
 
     # Second delivery with identical delivery id - must safely deduplicate!
     res2 = await client.post(
@@ -81,8 +81,9 @@ async def test_github_webhook_invalid_signature_rejected(client: AsyncClient):
         headers={
             "Content-Type": "application/json",
             "X-Hub-Signature-256": "sha256=invalid_hash_signature",
-            "X-GitHub-Event": "push"
+            "X-GitHub-Event": "push",
+            "X-GitHub-Delivery": "delivery-invalid-sig-test"
         }
     )
     assert res.status_code == 401
-    assert "Invalid GitHub webhook HMAC signature" in res.json()["detail"]
+    assert "Invalid HMAC SHA-256 signature" in res.json()["detail"]

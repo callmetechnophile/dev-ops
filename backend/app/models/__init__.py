@@ -3,6 +3,8 @@ from app.models.organization import Tenant, Organization, User
 from app.models.service import Repository, Service, Environment, ServiceDependency
 from app.models.deployment import Commit, Change, Build, Deployment, InfrastructureChange
 from app.models.event import Event
+from app.models.webhook_delivery import WebhookDelivery
+from app.models.github_entities import PullRequest, WorkflowRun, WorkflowJob, DeploymentEvent
 from app.models.incident import Incident, Failure, RootCauseHypothesis, ConfirmedRootCause
 from app.models.intelligence import RemediationAction, RiskAssessment, Recommendation
 from app.models.governance import ApprovalRequest, ApprovalDecision
@@ -25,6 +27,11 @@ __all__ = [
     "Deployment",
     "InfrastructureChange",
     "Event",
+    "WebhookDelivery",
+    "PullRequest",
+    "WorkflowRun",
+    "WorkflowJob",
+    "DeploymentEvent",
     "Incident",
     "Failure",
     "RootCauseHypothesis",

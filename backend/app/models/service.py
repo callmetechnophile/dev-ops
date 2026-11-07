@@ -11,14 +11,20 @@ class Repository(Base, TimestampMixin, TenantMixin):
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(GUID(), ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    github_repo_id = Column(String(100), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False, index=True)  # e.g., org/repo
+    owner_login = Column(String(255), nullable=True)
     provider = Column(String(50), default="github", nullable=False)
     default_branch = Column(String(100), default="main", nullable=False)
     clone_url = Column(String(512), nullable=True)
+    html_url = Column(String(512), nullable=True)
+    is_private = Column(Boolean, default=False, nullable=False)
 
     organization = relationship("Organization", back_populates="repositories")
     services = relationship("Service", back_populates="repository")
+    pull_requests = relationship("PullRequest", back_populates="repository", cascade="all, delete-orphan")
+    workflow_runs = relationship("WorkflowRun", back_populates="repository", cascade="all, delete-orphan")
 
 
 class Service(Base, TimestampMixin, TenantMixin):

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
   Rocket, 
+  Layers,
   AlertTriangle, 
   GitFork, 
   BrainCircuit, 
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: LayoutDashboard },
   { label: "Deployments", href: "/deployments", icon: Rocket },
+  { label: "Build History", href: "/builds", icon: Layers },
   { label: "Risk Assessment", href: "/risk", icon: AlertTriangle },
   { label: "Incident Memory", href: "/incidents", icon: Activity },
   { label: "Dependency Map", href: "/dependencies", icon: GitFork },

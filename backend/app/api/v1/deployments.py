@@ -1,13 +1,20 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.database import get_db
-from app.models.deployment import Deployment
+from app.models.deployment import Deployment, Commit
+from app.models.github_entities import WorkflowRun, DeploymentEvent, PullRequest
+from app.models.governance import ApprovalRequest, ApprovalDecision
 from app.models.intelligence import RiskAssessment, Recommendation
-from app.schemas.deployment import DeploymentRead, DeploymentCreate
+from app.schemas.deployment import (
+    DeploymentRead,
+    DeploymentCreate,
+    DeploymentTimelineRead,
+    DeploymentTimelineItem,
+)
 from app.schemas.risk import RiskAssessmentRead
 from app.schemas.common import PaginatedResponse
 
@@ -41,10 +48,13 @@ async def list_deployments(
             tenant_id=str(d.tenant_id),
             service_id=str(d.service_id),
             build_id=str(d.build_id) if d.build_id else None,
+            workflow_run_id=str(d.workflow_run_id) if d.workflow_run_id else None,
+            github_deployment_id=d.github_deployment_id,
             environment=d.environment,
             commit_sha=d.commit_sha,
             status=d.status,
             triggered_by=d.triggered_by,
+            creator_login=d.creator_login,
             started_at=d.started_at,
             finished_at=d.finished_at,
             duration_seconds=d.duration_seconds,
@@ -82,15 +92,153 @@ async def get_deployment(id: str, db: AsyncSession = Depends(get_db)):
         tenant_id=str(d.tenant_id),
         service_id=str(d.service_id),
         build_id=str(d.build_id) if d.build_id else None,
+        workflow_run_id=str(d.workflow_run_id) if d.workflow_run_id else None,
+        github_deployment_id=d.github_deployment_id,
         environment=d.environment,
         commit_sha=d.commit_sha,
         status=d.status,
         triggered_by=d.triggered_by,
+        creator_login=d.creator_login,
         started_at=d.started_at,
         finished_at=d.finished_at,
         duration_seconds=d.duration_seconds,
         created_at=d.created_at,
         metadata_json=d.metadata_json or {}
+    )
+
+
+@router.get("/{id}/timeline", response_model=DeploymentTimelineRead)
+async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Constructs a deterministic chronological timeline for a deployment:
+    Commit -> Pull Request -> CI Workflow Runs -> Approvals -> Deployment Events.
+    Section 8 of Specification.
+    """
+    try:
+        dep_uuid = uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid deployment UUID")
+
+    stmt = select(Deployment).where(Deployment.id == dep_uuid).options(selectinload(Deployment.events))
+    result = await db.execute(stmt)
+    d = result.scalar_one_or_none()
+
+    if not d:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    timeline_items: List[DeploymentTimelineItem] = []
+
+    # 1. Correlated Commit
+    c_stmt = select(Commit).where(
+        and_(
+            Commit.tenant_id == d.tenant_id,
+            Commit.commit_sha == d.commit_sha
+        )
+    )
+    c_res = await db.execute(c_stmt)
+    commit = c_res.scalar_one_or_none()
+    if commit:
+        timeline_items.append(
+            DeploymentTimelineItem(
+                step_type="commit",
+                title=f"Commit created: {commit.commit_sha[:7]}",
+                description=commit.message,
+                status="committed",
+                timestamp=commit.committed_at,
+                actor=commit.author_login or commit.author_name,
+                reference_id=commit.commit_sha,
+                metadata={"additions": commit.stats_additions, "deletions": commit.stats_deletions}
+            )
+        )
+
+        # 2. Correlated Pull Request
+        pr_stmt = select(PullRequest).where(
+            and_(
+                PullRequest.tenant_id == d.tenant_id,
+                PullRequest.head_sha == commit.commit_sha
+            )
+        )
+        pr_res = await db.execute(pr_stmt)
+        pr = pr_res.scalar_one_or_none()
+        if pr and pr.is_merged and pr.merged_at:
+            timeline_items.append(
+                DeploymentTimelineItem(
+                    step_type="pr_merged",
+                    title=f"Pull Request #{pr.number} Merged: {pr.title}",
+                    description=f"Merged {pr.head_branch} into {pr.base_branch}",
+                    status="merged",
+                    timestamp=pr.merged_at,
+                    actor=pr.author_login,
+                    reference_id=str(pr.number)
+                )
+            )
+
+    # 3. Correlated Workflow Runs
+    w_stmt = select(WorkflowRun).where(
+        and_(
+            WorkflowRun.tenant_id == d.tenant_id,
+            WorkflowRun.head_sha == d.commit_sha
+        )
+    ).order_by(WorkflowRun.started_at.asc())
+    w_res = await db.execute(w_stmt)
+    workflows = w_res.scalars().all()
+    for w in workflows:
+        timeline_items.append(
+            DeploymentTimelineItem(
+                step_type="workflow_run",
+                title=f"GitHub Actions: {w.name} (#{w.run_number})",
+                description=f"Event: {w.event} &middot; Conclusion: {w.conclusion or 'running'}",
+                status=w.conclusion or w.status,
+                timestamp=w.started_at,
+                actor=w.actor_login,
+                reference_id=w.github_run_id,
+                metadata={"duration_seconds": w.duration_seconds}
+            )
+        )
+
+    # 4. Approvals
+    app_stmt = select(ApprovalRequest).where(
+        ApprovalRequest.deployment_id == d.id
+    ).options(selectinload(ApprovalRequest.decisions))
+    app_res = await db.execute(app_stmt)
+    app_requests = app_res.scalars().all()
+    for ar in app_requests:
+        for dec in ar.decisions:
+            timeline_items.append(
+                DeploymentTimelineItem(
+                    step_type="approval",
+                    title=f"Human Gate Decision: {dec.decision}",
+                    description=dec.justification,
+                    status=dec.decision,
+                    timestamp=dec.decided_at,
+                    reference_id=str(dec.id),
+                    metadata={"audit_signature": dec.audit_signature}
+                )
+            )
+
+    # 5. Discrete Deployment Events
+    for de in d.events:
+        timeline_items.append(
+            DeploymentTimelineItem(
+                step_type="deployment_event",
+                title=f"Deployment state changed to {de.status.upper()}",
+                description=de.description or f"Target environment: {de.environment}",
+                status=de.status,
+                timestamp=de.occurred_at,
+                actor=de.creator_login,
+                reference_id=de.github_deployment_status_id or de.github_deployment_id
+            )
+        )
+
+    # Sort chronological
+    timeline_items.sort(key=lambda x: x.timestamp)
+
+    return DeploymentTimelineRead(
+        deployment_id=str(d.id),
+        environment=d.environment,
+        commit_sha=d.commit_sha,
+        current_status=d.status,
+        timeline=timeline_items
     )
 
 

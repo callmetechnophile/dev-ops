@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -26,14 +26,24 @@ class Settings(BaseSettings):
         default="postgresql+psycopg2://postgres:postgres@localhost:5432/devops_intelligence"
     )
 
-    # Redis
+    # Redis Streams
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
     REDIS_STREAM_EVENTS: str = "stream:devops:events"
+    REDIS_STREAM_DEAD_LETTER: str = "stream:devops:deadletter"
     REDIS_CONSUMER_GROUP: str = "group:devops:intelligence"
+    REDIS_CONSUMER_NAME: str = "worker-1"
 
-    # Integrations
+    # GitHub App Integration
+    GITHUB_APP_ID: Optional[str] = Field(default=None)
+    GITHUB_APP_PRIVATE_KEY: Optional[str] = Field(default=None)
+    GITHUB_APP_PRIVATE_KEY_PATH: Optional[str] = Field(default=None)
+    GITHUB_APP_INSTALLATION_ID: Optional[str] = Field(default=None)
+    GITHUB_CLIENT_ID: Optional[str] = Field(default=None)
+    GITHUB_CLIENT_SECRET: Optional[str] = Field(default=None)
     GITHUB_WEBHOOK_SECRET: str = Field(default="test-github-webhook-secret")
-    GITHUB_API_TOKEN: str = Field(default="")
+    GITHUB_API_TOKEN: Optional[str] = Field(default=None)
+    GITHUB_API_BASE_URL: str = "https://api.github.com"
+    MAX_WEBHOOK_PAYLOAD_BYTES: int = 10 * 1024 * 1024  # 10 MB
 
     # CORS
     CORS_ORIGINS: List[str] = [

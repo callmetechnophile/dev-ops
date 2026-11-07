@@ -11,16 +11,27 @@ import {
   ShieldCheck, 
   ArrowRight,
   Server,
-  Layers
+  Layers,
+  GitBranch,
+  XCircle,
+  Activity
 } from "lucide-react";
-import { fetchHealth, fetchDeployments, fetchIncidents, fetchApprovals } from "@/lib/api";
+import { 
+  fetchHealth, 
+  fetchDeployments, 
+  fetchIncidents, 
+  fetchApprovals, 
+  fetchWorkflows,
+  fetchGitHubStatus 
+} from "@/lib/api";
 import { StatusBadge } from "@/components/status-badge";
-import { RiskMeter } from "@/components/risk-meter";
 import { formatDate } from "@/lib/utils";
 
 export default function OverviewPage() {
   const [health, setHealth] = useState<any>(null);
+  const [githubStatus, setGithubStatus] = useState<any>(null);
   const [deployments, setDeployments] = useState<any[]>([]);
+  const [workflows, setWorkflows] = useState<any[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,14 +39,18 @@ export default function OverviewPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [h, d, inc, app] = await Promise.allSettled([
+        const [h, gh, d, w, inc, app] = await Promise.allSettled([
           fetchHealth(),
+          fetchGitHubStatus(),
           fetchDeployments(),
+          fetchWorkflows(),
           fetchIncidents(),
           fetchApprovals(),
         ]);
         if (h.status === "fulfilled") setHealth(h.value);
+        if (gh.status === "fulfilled") setGithubStatus(gh.value);
         if (d.status === "fulfilled") setDeployments(d.value.items || []);
+        if (w.status === "fulfilled") setWorkflows(w.value.items || []);
         if (inc.status === "fulfilled") setIncidents(inc.value.items || []);
         if (app.status === "fulfilled") setApprovals(app.value.items || []);
       } finally {
@@ -45,7 +60,13 @@ export default function OverviewPage() {
     loadData();
   }, []);
 
+  const totalDeployments = deployments.length;
+  const successfulDeployments = deployments.filter((d) => d.status === "SUCCEEDED").length;
+  const failedDeployments = deployments.filter((d) => d.status === "FAILED").length;
   const pendingApprovals = approvals.filter((a) => a.status === "WAITING_FOR_APPROVAL");
+
+  // Calculate deployment frequency (deployments in last 7 days or total if small)
+  const successRate = totalDeployments > 0 ? Math.round((successfulDeployments / totalDeployments) * 100) : 0;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -73,34 +94,36 @@ export default function OverviewPage() {
             className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono font-medium bg-muted text-muted-foreground border border-border hover:text-foreground transition-colors"
           >
             <Server className="h-3.5 w-3.5" />
-            <span>Integrations</span>
+            <span>GitHub Connector: {githubStatus?.status || "CHECKING"}</span>
           </Link>
         </div>
       </div>
 
-      {/* Primary Key Metrics */}
+      {/* Deployment Overview Metrics (Section 9.A) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-lg bg-card border border-border space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-            <span>Agent Engine</span>
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+            <span>Total Deployments</span>
+            <Rocket className="h-4 w-4 text-sky-400" />
           </div>
-          <div className="text-xl font-bold text-foreground">
-            {health?.status ? health.status.toUpperCase() : "CHECKING..."}
+          <div className="text-2xl font-bold text-foreground">
+            {totalDeployments}
           </div>
-          <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>Strict Approval Gate: Active</span>
+          <div className="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
+            <span>Success Rate:</span>
+            <span className="text-emerald-400 font-bold">{successRate}%</span>
           </div>
         </div>
 
         <div className="p-4 rounded-lg bg-card border border-border space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-            <span>Active Deployments</span>
-            <Rocket className="h-4 w-4 text-sky-400" />
+            <span>Successful / Failed</span>
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
           </div>
-          <div className="text-xl font-bold text-foreground">
-            {deployments.length}
+          <div className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <span className="text-emerald-400">{successfulDeployments}</span>
+            <span className="text-muted-foreground text-sm font-normal">/</span>
+            <span className="text-rose-400">{failedDeployments}</span>
           </div>
           <div className="text-[11px] text-muted-foreground font-mono">
             {deployments.filter((d) => d.status === "WAITING_FOR_APPROVAL").length} waiting approval
@@ -109,32 +132,32 @@ export default function OverviewPage() {
 
         <div className="p-4 rounded-lg bg-card border border-border space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-            <span>Recorded Incidents</span>
+            <span>CI Workflow Runs</span>
+            <GitBranch className="h-4 w-4 text-accent" />
+          </div>
+          <div className="text-2xl font-bold text-foreground">
+            {workflows.length}
+          </div>
+          <div className="text-[11px] text-muted-foreground font-mono">
+            Correlated with commits & builds
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg bg-card border border-border space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
+            <span>Incident Memory</span>
             <AlertTriangle className="h-4 w-4 text-amber-400" />
           </div>
-          <div className="text-xl font-bold text-foreground">
+          <div className="text-2xl font-bold text-foreground">
             {incidents.length}
           </div>
           <div className="text-[11px] text-muted-foreground font-mono">
             Episodic memory synchronized
           </div>
         </div>
-
-        <div className="p-4 rounded-lg bg-card border border-border space-y-2">
-          <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-            <span>Operational Memory</span>
-            <Brain className="h-4 w-4 text-accent" />
-          </div>
-          <div className="text-xl font-bold text-foreground">
-            Stage A Heuristics
-          </div>
-          <div className="text-[11px] text-muted-foreground font-mono">
-            XGBoost feature pipeline ready
-          </div>
-        </div>
       </div>
 
-      {/* Main Grid: Active Approvals & Recent Deployments */}
+      {/* Main Grid: Pending Approvals & Recent Deployments */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Approvals Section */}
         <div className="p-4 rounded-lg bg-card border border-border space-y-4">
@@ -217,7 +240,7 @@ export default function OverviewPage() {
                       </span>
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      {formatDate(dep.created_at)}
+                      {formatDate(dep.created_at)} &middot; {dep.creator_login ? `by @${dep.creator_login}` : dep.triggered_by}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -226,7 +249,7 @@ export default function OverviewPage() {
                       href={`/deployments`}
                       className="text-accent hover:underline text-[11px]"
                     >
-                      Inspect
+                      Timeline
                     </Link>
                   </div>
                 </div>
@@ -264,12 +287,12 @@ export default function OverviewPage() {
 
           <div className="p-3 rounded border border-border bg-background/40 flex items-center justify-between">
             <div className="space-y-0.5">
-              <div className="text-foreground">Agent State Machine</div>
+              <div className="text-foreground">GitHub Webhook Pipeline</div>
               <div className="text-[10px] text-muted-foreground">
-                Approval Invariant: Enforced
+                Status: {githubStatus?.status || "PENDING"}
               </div>
             </div>
-            <StatusBadge status="ACTIVE" />
+            <StatusBadge status={githubStatus?.status === "CONFIGURED" ? "ACTIVE" : "PENDING"} />
           </div>
         </div>
       </div>

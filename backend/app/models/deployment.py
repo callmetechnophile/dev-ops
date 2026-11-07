@@ -13,13 +13,19 @@ class Commit(Base, TimestampMixin, TenantMixin):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     repository_id = Column(GUID(), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False, index=True)
     commit_sha = Column(String(64), nullable=False, index=True)
+    github_commit_id = Column(String(100), nullable=True)
     branch = Column(String(255), default="main", nullable=False)
     author_name = Column(String(255), nullable=True)
     author_email = Column(String(255), nullable=True)
+    author_login = Column(String(255), nullable=True)
     message = Column(Text, nullable=True)
+    html_url = Column(String(512), nullable=True)
+    stats_additions = Column(Integer, default=0, nullable=False)
+    stats_deletions = Column(Integer, default=0, nullable=False)
     committed_at = Column(DateTime(timezone=True), nullable=False)
 
     changes = relationship("Change", back_populates="commit", cascade="all, delete-orphan")
+    workflow_runs = relationship("WorkflowRun", back_populates="commit")
 
     __table_args__ = (
         Index("ix_commit_tenant_repo_sha", "tenant_id", "repository_id", "commit_sha", unique=True),
@@ -46,6 +52,7 @@ class Build(Base, TimestampMixin, TenantMixin):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     repository_id = Column(GUID(), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False, index=True)
     commit_sha = Column(String(64), nullable=False, index=True)
+    workflow_run_id = Column(GUID(), ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True, index=True)
     build_number = Column(Integer, nullable=True)
     status = Column(String(50), default="pending", nullable=False, index=True)  # pending, running, succeeded, failed
     duration_seconds = Column(Float, nullable=True)
@@ -55,6 +62,7 @@ class Build(Base, TimestampMixin, TenantMixin):
     logs_summary = Column(Text, nullable=True)
     metadata_json = Column(JSON, default=dict, nullable=False)
 
+    workflow_run = relationship("WorkflowRun", back_populates="builds")
     deployments = relationship("Deployment", back_populates="build")
 
 
@@ -64,6 +72,8 @@ class Deployment(Base, TimestampMixin, TenantMixin):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     service_id = Column(GUID(), ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True)
     build_id = Column(GUID(), ForeignKey("builds.id", ondelete="SET NULL"), nullable=True, index=True)
+    workflow_run_id = Column(GUID(), ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    github_deployment_id = Column(String(100), nullable=True, index=True)
     environment = Column(String(100), default="production", nullable=False, index=True)
     commit_sha = Column(String(64), nullable=False, index=True)
     status = Column(
@@ -75,6 +85,7 @@ class Deployment(Base, TimestampMixin, TenantMixin):
        # RECOMMENDATION_GENERATED, WAITING_FOR_APPROVAL, APPROVED, REJECTED,
        # IN_PROGRESS, SUCCEEDED, FAILED, ROLLED_BACK
     triggered_by = Column(String(255), default="github_action", nullable=False)
+    creator_login = Column(String(255), nullable=True)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
     duration_seconds = Column(Float, nullable=True)
@@ -83,6 +94,8 @@ class Deployment(Base, TimestampMixin, TenantMixin):
 
     service = relationship("Service", back_populates="deployments")
     build = relationship("Build", back_populates="deployments")
+    workflow_run = relationship("WorkflowRun", back_populates="deployments")
+    events = relationship("DeploymentEvent", back_populates="deployment", cascade="all, delete-orphan")
     infrastructure_changes = relationship("InfrastructureChange", back_populates="deployment")
     risk_assessments = relationship("RiskAssessment", back_populates="deployment")
     incidents = relationship("Incident", back_populates="deployment")

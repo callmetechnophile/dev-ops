@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import DevOpsIntelligenceError
@@ -52,6 +53,12 @@ async def devops_exception_handler(request: Request, exc: DevOpsIntelligenceErro
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
+@app.get("/metrics", tags=["Observability"])
+async def metrics_endpoint():
+    """Prometheus metrics endpoint."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/", tags=["Root"])
 async def root():
     return {
@@ -60,4 +67,5 @@ async def root():
         "status": "operational",
         "docs_url": f"{settings.API_V1_PREFIX}/docs",
         "health_url": f"{settings.API_V1_PREFIX}/health",
+        "metrics_url": "/metrics",
     }
