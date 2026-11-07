@@ -28,14 +28,7 @@ async def get_github_integration_status(db: AsyncSession = Depends(get_db)) -> D
         "app_id": status_info["app_id"],
         "installation_id": status_info["installation_id"],
         "webhook_configured": status_info["webhook_configured"],
-        "supported_events": [
-            "push",
-            "pull_request",
-            "workflow_run",
-            "workflow_job",
-            "deployment",
-            "deployment_status"
-        ]
+        "supported_events": ["push", "pull_request", "workflow_run", "workflow_job", "deployment", "deployment_status"],
     }
 
 
@@ -45,7 +38,7 @@ async def github_webhook(
     x_hub_signature_256: Optional[str] = Header(None, alias="X-Hub-Signature-256"),
     x_github_event: Optional[str] = Header(None, alias="X-GitHub-Event"),
     x_github_delivery: Optional[str] = Header(None, alias="X-GitHub-Delivery"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     FastAPI webhook receiver for GitHub operational events.
@@ -60,15 +53,21 @@ async def github_webhook(
         payload_bytes=body_bytes,
         signature_header=x_hub_signature_256,
         event_header=x_github_event,
-        delivery_id=x_github_delivery
+        delivery_id=x_github_delivery,
     )
 
     if not is_valid:
         metrics.github_webhook_invalid_signature_total.inc()
-        logger.warning(f"Rejected GitHub webhook from {request.client.host if request.client else 'unknown'}: {error_msg}")
+        logger.warning(
+            f"Rejected GitHub webhook from {request.client.host if request.client else 'unknown'}: {error_msg}"
+        )
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED if "signature" in (error_msg or "").lower() else status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
+            status_code=(
+                status.HTTP_401_UNAUTHORIZED
+                if "signature" in (error_msg or "").lower()
+                else status.HTTP_400_BAD_REQUEST
+            ),
+            detail=error_msg,
         )
 
     # 2. Parse payload safely
@@ -76,10 +75,7 @@ async def github_webhook(
         payload = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
     except Exception as e:
         logger.error(f"Failed parsing webhook JSON for delivery {x_github_delivery}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Malformed JSON body"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed JSON body")
 
     # Resolve tenant
     tenant_id = payload.get("tenant_id") or "00000000-0000-0000-0000-000000000001"
@@ -91,7 +87,7 @@ async def github_webhook(
         event_type=x_github_event or "unknown",
         signature=x_hub_signature_256,
         payload_dict=payload,
-        tenant_id=tenant_id
+        tenant_id=tenant_id,
     )
 
     # If new and local processing mode (Redis offline or test mode), process synchronously
@@ -102,7 +98,7 @@ async def github_webhook(
                 delivery_id=x_github_delivery or "unknown",
                 event_type=x_github_event or "unknown",
                 payload=payload,
-                tenant_id=tenant_id
+                tenant_id=tenant_id,
             )
             response.status = "processed_local"
         except Exception as e:

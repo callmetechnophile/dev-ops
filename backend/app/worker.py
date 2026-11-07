@@ -7,6 +7,7 @@ Runs the Redis Streams consumer worker with:
 - Graceful shutdown handling for SIGTERM and SIGINT.
 - Database health check.
 """
+
 import asyncio
 import logging
 import signal
@@ -25,7 +26,7 @@ async def main():
 
     # Test database connectivity
     try:
-        async with engine.connect() as conn:
+        async with engine.connect():
             logger.info("Worker database connection established.")
     except Exception as e:
         logger.critical(f"Worker could not connect to database: {e}", exc_info=True)

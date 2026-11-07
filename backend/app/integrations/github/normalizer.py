@@ -25,10 +25,7 @@ def parse_datetime(dt_str: Any) -> datetime:
 
 
 def normalize_github_event(
-    event_type: str,
-    delivery_id: str,
-    payload: Dict[str, Any],
-    tenant_id: str = "00000000-0000-0000-0000-000000000001"
+    event_type: str, delivery_id: str, payload: Dict[str, Any], tenant_id: str = "00000000-0000-0000-0000-000000000001"
 ) -> Tuple[NormalizedEventContract, Any]:
     """
     Normalizes incoming GitHub webhook payload into typed event representation
@@ -54,7 +51,7 @@ def normalize_github_event(
         correlation_id=str(uuid.uuid4()),
         occurred_at=datetime.now(timezone.utc),
         received_at=datetime.now(timezone.utc),
-        payload=payload
+        payload=payload,
     )
 
     specific_event = None
@@ -94,7 +91,9 @@ def normalize_github_event(
 
         head_sha = payload.get("after") or (head_commit.id if head_commit else None)
         contract.commit_sha = head_sha
-        contract.occurred_at = head_commit.timestamp if head_commit and head_commit.timestamp else datetime.now(timezone.utc)
+        contract.occurred_at = (
+            head_commit.timestamp if head_commit and head_commit.timestamp else datetime.now(timezone.utc)
+        )
 
         specific_event = PushEvent(
             ref=payload.get("ref", "refs/heads/main"),
@@ -110,7 +109,7 @@ def normalize_github_event(
             forced=payload.get("forced", False),
             created=payload.get("created", False),
             deleted=payload.get("deleted", False),
-            raw_payload=payload
+            raw_payload=payload,
         )
 
     elif event_type == "pull_request":
@@ -139,7 +138,7 @@ def normalize_github_event(
             changed_files=pr_data.get("changed_files", 0),
             additions=pr_data.get("additions", 0),
             deletions=pr_data.get("deletions", 0),
-            raw_payload=payload
+            raw_payload=payload,
         )
 
     elif event_type == "workflow_run":
@@ -174,7 +173,7 @@ def normalize_github_event(
             repository_name=repo_name,
             repository_full_name=repo_full_name,
             html_url=run_data.get("html_url"),
-            raw_payload=payload
+            raw_payload=payload,
         )
 
     elif event_type == "workflow_job":
@@ -198,7 +197,7 @@ def normalize_github_event(
             runner_name=job_data.get("runner_name"),
             steps=job_data.get("steps", []),
             repository_full_name=repo_full_name,
-            raw_payload=payload
+            raw_payload=payload,
         )
 
     elif event_type in ("deployment", "deployment_status"):
@@ -226,7 +225,7 @@ def normalize_github_event(
             repository_name=repo_name,
             repository_full_name=repo_full_name,
             occurred_at=occurred,
-            raw_payload=payload
+            raw_payload=payload,
         )
 
     return contract, specific_event

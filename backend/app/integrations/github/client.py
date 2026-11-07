@@ -32,15 +32,19 @@ class GitHubClient:
     def get_integration_status(self) -> Dict[str, Any]:
         """Provides status details for GitHub App integration."""
         configured = self.is_configured()
-        auth_type = "personal_token" if settings.GITHUB_API_TOKEN else ("github_app" if settings.GITHUB_APP_ID else "none")
+        auth_type = (
+            "personal_token" if settings.GITHUB_API_TOKEN else ("github_app" if settings.GITHUB_APP_ID else "none")
+        )
 
         return {
             "configured": configured,
             "auth_type": auth_type,
             "app_id": settings.GITHUB_APP_ID,
             "installation_id": settings.GITHUB_APP_INSTALLATION_ID,
-            "webhook_configured": bool(settings.GITHUB_WEBHOOK_SECRET and settings.GITHUB_WEBHOOK_SECRET != "test-github-webhook-secret"),
-            "status": "CONFIGURED" if configured else "PENDING_SETUP"
+            "webhook_configured": bool(
+                settings.GITHUB_WEBHOOK_SECRET and settings.GITHUB_WEBHOOK_SECRET != "test-github-webhook-secret"
+            ),
+            "status": "CONFIGURED" if configured else "PENDING_SETUP",
         }
 
     def _generate_app_jwt(self) -> Optional[str]:
@@ -49,7 +53,11 @@ class GitHubClient:
             return None
 
         private_key = settings.GITHUB_APP_PRIVATE_KEY
-        if not private_key and settings.GITHUB_APP_PRIVATE_KEY_PATH and os.path.exists(settings.GITHUB_APP_PRIVATE_KEY_PATH):
+        if (
+            not private_key
+            and settings.GITHUB_APP_PRIVATE_KEY_PATH
+            and os.path.exists(settings.GITHUB_APP_PRIVATE_KEY_PATH)
+        ):
             with open(settings.GITHUB_APP_PRIVATE_KEY_PATH, "r", encoding="utf-8") as f:
                 private_key = f.read()
 
@@ -58,12 +66,9 @@ class GitHubClient:
 
         try:
             import jwt  # PyJWT or python-jose
+
             now = int(time.time())
-            payload = {
-                "iat": now - 60,
-                "exp": now + (10 * 60),
-                "iss": settings.GITHUB_APP_ID
-            }
+            payload = {"iat": now - 60, "exp": now + (10 * 60), "iss": settings.GITHUB_APP_ID}
             return jwt.encode(payload, private_key, algorithm="RS256")
         except Exception as e:
             logger.error(f"Failed to generate GitHub App JWT: {e}")
@@ -75,7 +80,7 @@ class GitHubClient:
             return {
                 "Authorization": f"Bearer {settings.GITHUB_API_TOKEN}",
                 "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28"
+                "X-GitHub-Api-Version": "2022-11-28",
             }
 
         jwt_token = self._generate_app_jwt()
@@ -87,10 +92,7 @@ class GitHubClient:
                     async with httpx.AsyncClient(timeout=10.0) as client:
                         res = await client.post(
                             token_url,
-                            headers={
-                                "Authorization": f"Bearer {jwt_token}",
-                                "Accept": "application/vnd.github+json"
-                            }
+                            headers={"Authorization": f"Bearer {jwt_token}", "Accept": "application/vnd.github+json"},
                         )
                         if res.status_code == 201:
                             data = res.json()
@@ -101,19 +103,16 @@ class GitHubClient:
                     return {
                         "Authorization": f"Bearer {self._installation_token}",
                         "Accept": "application/vnd.github+json",
-                        "X-GitHub-Api-Version": "2022-11-28"
+                        "X-GitHub-Api-Version": "2022-11-28",
                     }
 
             return {
                 "Authorization": f"Bearer {jwt_token}",
                 "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28"
+                "X-GitHub-Api-Version": "2022-11-28",
             }
 
-        return {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
-        }
+        return {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 
     async def get_repository(self, owner: str, repo: str) -> Optional[Dict[str, Any]]:
         """Fetches repository metadata from GitHub API."""

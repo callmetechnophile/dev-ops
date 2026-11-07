@@ -7,6 +7,7 @@ Implements:
 
 Strictly tenant-scoped. Never presents unverified hypotheses as confirmed historical lessons.
 """
+
 from __future__ import annotations
 import math
 import uuid
@@ -136,7 +137,9 @@ class OperationalMemoryService:
 
         crc_res = await db.execute(crc_stmt)
         for crc in crc_res.scalars().all():
-            text_corpus = f"{crc.root_cause_summary} {crc.verified_engineering_lesson} {crc.prevention_strategy}".lower()
+            text_corpus = (
+                f"{crc.root_cause_summary} {crc.verified_engineering_lesson} {crc.prevention_strategy}".lower()
+            )
             score = self._compute_lexical_similarity(q_tokens, text_corpus)
             if score > 0.0 or not q_tokens:
                 results.append(

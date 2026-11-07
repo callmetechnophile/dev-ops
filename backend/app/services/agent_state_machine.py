@@ -7,6 +7,7 @@ Enforces:
 - LLM response transition containment (LLMs cannot bypass validation).
 - Safe timeout and expiration handling.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -80,6 +81,7 @@ VALID_TRANSITIONS: Dict[str, Set[str]] = {
 
 class InvalidStateTransitionError(Exception):
     """Raised when an illegal state transition is attempted."""
+
     def __init__(self, current_state: str, target_state: str, reason: str = ""):
         self.current_state = current_state
         self.target_state = target_state
@@ -114,7 +116,7 @@ class AgentStateMachine:
             raise InvalidStateTransitionError(
                 current_state,
                 next_state,
-                f"Valid next states from '{current_state}' are: {list(VALID_TRANSITIONS.get(current_state, set()))}"
+                f"Valid next states from '{current_state}' are: {list(VALID_TRANSITIONS.get(current_state, set()))}",
             )
 
         now = datetime.now(timezone.utc)
@@ -144,7 +146,12 @@ class AgentStateMachine:
             execution.execution_status = "FAILED"
             execution.last_error = reason
             execution.completed_at = now
-        elif next_state in (STATE_APPROVED, STATE_POST_DEPLOYMENT_MONITORING, STATE_OUTCOME_VERIFICATION, STATE_MEMORY_UPDATE):
+        elif next_state in (
+            STATE_APPROVED,
+            STATE_POST_DEPLOYMENT_MONITORING,
+            STATE_OUTCOME_VERIFICATION,
+            STATE_MEMORY_UPDATE,
+        ):
             execution.execution_status = "RUNNING"
 
         await db.flush()

@@ -9,6 +9,7 @@ Implements versioned deterministic classification taxonomy across:
 
 Never fabricates errors. Distinguishes cancelled, skipped, timed out, and failed states.
 """
+
 from __future__ import annotations
 import re
 from typing import Dict, Any, List, Optional
@@ -71,55 +72,96 @@ class FailureClassifier:
 
     # Pre-compiled regex patterns for deterministic parsing
     COMPILATION_PATTERNS = [
-        re.compile(r"(?:syntaxerror|typeerror|cannot find symbol|compilation error|build failed|tsc.*error|fatal error: .* file not found|undeclared identifier)", re.IGNORECASE),
-        re.compile(r"(?:javac.*error|gcc.*error|clang.*error|rustc.*error|cargo build.*failed|go build.*failed)", re.IGNORECASE)
+        re.compile(
+            r"(?:syntaxerror|typeerror|cannot find symbol|compilation error|build failed|tsc.*error|fatal error: .* file not found|undeclared identifier)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?:javac.*error|gcc.*error|clang.*error|rustc.*error|cargo build.*failed|go build.*failed)", re.IGNORECASE
+        ),
     ]
 
     DEPENDENCY_PATTERNS = [
-        re.compile(r"(?:pip.*could not find a version|npm err! 404|yarn error: package not found|resolution failed|cannot resolve dependency|checksum mismatch|could not resolve host: pypi|failed to download package)", re.IGNORECASE),
-        re.compile(r"(?:connection refused.*npm|maven.*could not resolve dependencies|gem: could not find a valid gem)", re.IGNORECASE)
+        re.compile(
+            r"(?:pip.*could not find a version|npm err! 404|yarn error: package not found|resolution failed|cannot resolve dependency|checksum mismatch|could not resolve host: pypi|failed to download package)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?:connection refused.*npm|maven.*could not resolve dependencies|gem: could not find a valid gem)",
+            re.IGNORECASE,
+        ),
     ]
 
     UNIT_TEST_PATTERNS = [
-        re.compile(r"(?:test(?:s)? failed|failed \d+ of \d+ tests|pytest.*failed|junit.*failures=\"[1-9]|assertions failed|jest.*failed|go test.*FAIL)", re.IGNORECASE),
-        re.compile(r"(?:FAIL: test_|AssertionError:|expected:.*actual:.*)", re.IGNORECASE)
+        re.compile(
+            r"(?:test(?:s)? failed|failed \d+ of \d+ tests|pytest.*failed|junit.*failures=\"[1-9]|assertions failed|jest.*failed|go test.*FAIL)",
+            re.IGNORECASE,
+        ),
+        re.compile(r"(?:FAIL: test_|AssertionError:|expected:.*actual:.*)", re.IGNORECASE),
     ]
 
     INTEGRATION_TEST_PATTERNS = [
-        re.compile(r"(?:integration test.*failed|e2e test.*failed|cypress.*failed|playwright.*failed|selenium.*error)", re.IGNORECASE),
+        re.compile(
+            r"(?:integration test.*failed|e2e test.*failed|cypress.*failed|playwright.*failed|selenium.*error)",
+            re.IGNORECASE,
+        ),
     ]
 
     CONTAINER_BUILD_PATTERNS = [
-        re.compile(r"(?:docker build.*failed|failed to solve with frontend dockerfile|error: failed to solve: process .* did not complete successfully|buildkit error|dockerfile parse error)", re.IGNORECASE),
+        re.compile(
+            r"(?:docker build.*failed|failed to solve with frontend dockerfile|error: failed to solve: process .* did not complete successfully|buildkit error|dockerfile parse error)",
+            re.IGNORECASE,
+        ),
     ]
 
     CONFIG_PATTERNS = [
-        re.compile(r"(?:missing required environment variable|unknown environment variable|invalid configuration|config error|yaml parse error|unmarshal error|env.*is not set)", re.IGNORECASE),
+        re.compile(
+            r"(?:missing required environment variable|unknown environment variable|invalid configuration|config error|yaml parse error|unmarshal error|env.*is not set)",
+            re.IGNORECASE,
+        ),
     ]
 
     SECRET_PATTERNS = [
-        re.compile(r"(?:secret not found|vault: permission denied|failed to read secret|secret reference .* cannot be resolved|auth token expired|unauthorized.*access token)", re.IGNORECASE)
+        re.compile(
+            r"(?:secret not found|vault: permission denied|failed to read secret|secret reference .* cannot be resolved|auth token expired|unauthorized.*access token)",
+            re.IGNORECASE,
+        )
     ]
 
     CONTAINER_CRASH_PATTERNS = [
-        re.compile(r"(?:CrashLoopBackOff|back-off .* restarting failed container|container terminated with exit code|panic: runtime error|segmentation fault|SIGSEGV|SIGABRT)", re.IGNORECASE)
+        re.compile(
+            r"(?:CrashLoopBackOff|back-off .* restarting failed container|container terminated with exit code|panic: runtime error|segmentation fault|SIGSEGV|SIGABRT)",
+            re.IGNORECASE,
+        )
     ]
 
     RESOURCE_EXHAUSTION_PATTERNS = [
-        re.compile(r"(?:OOMKilled|command killed due to out of memory|insufficient memory|out of memory|fatal error: runtime: out of memory|exit code 137)", re.IGNORECASE),
-        re.compile(r"(?:disk space full|no space left on device|ephemeral-storage exceeded)", re.IGNORECASE)
+        re.compile(
+            r"(?:OOMKilled|command killed due to out of memory|insufficient memory|out of memory|fatal error: runtime: out of memory|exit code 137)",
+            re.IGNORECASE,
+        ),
+        re.compile(r"(?:disk space full|no space left on device|ephemeral-storage exceeded)", re.IGNORECASE),
     ]
 
     POD_SCHEDULING_PATTERNS = [
-        re.compile(r"(?:0/\d+ nodes are available|insufficient cpu|insufficient memory|ImagePullBackOff|ErrImagePull|failed to pull image|manifest unknown)", re.IGNORECASE)
+        re.compile(
+            r"(?:0/\d+ nodes are available|insufficient cpu|insufficient memory|ImagePullBackOff|ErrImagePull|failed to pull image|manifest unknown)",
+            re.IGNORECASE,
+        )
     ]
 
     TIMEOUT_PATTERNS = [
-        re.compile(r"(?:context deadline exceeded|timed out after|operation timed out|execution timeout|job timed out|timeout reached)", re.IGNORECASE)
+        re.compile(
+            r"(?:context deadline exceeded|timed out after|operation timed out|execution timeout|job timed out|timeout reached)",
+            re.IGNORECASE,
+        )
     ]
 
     HEALTH_CHECK_PATTERNS = [
-        re.compile(r"(?:liveness probe failed|readiness probe failed|startup probe failed|healthcheck failed|503 service unavailable|502 bad gateway)", re.IGNORECASE)
+        re.compile(
+            r"(?:liveness probe failed|readiness probe failed|startup probe failed|healthcheck failed|503 service unavailable|502 bad gateway)",
+            re.IGNORECASE,
+        )
     ]
 
     def classify_event(self, event_type: str, payload: Dict[str, Any]) -> List[ClassificationResult]:
@@ -165,7 +207,7 @@ class FailureClassifier:
             or payload.get("workflow_job", {}).get("name")
             or ""
         )
-        
+
         # Check non-failure states
         if conclusion in ("success", "neutral"):
             return []  # Not a failure
@@ -180,7 +222,7 @@ class FailureClassifier:
                         "event_type": event_type,
                         "conclusion": conclusion,
                         "name": name,
-                        "note": "Workflow was deliberately cancelled or skipped by user/rule, not an unexpected failure."
+                        "note": "Workflow was deliberately cancelled or skipped by user/rule, not an unexpected failure.",
                     },
                     is_terminal_failure=False,
                 )
@@ -200,10 +242,12 @@ class FailureClassifier:
         steps = payload.get("workflow_job", {}).get("steps", []) or payload.get("steps", [])
         failed_steps = [s for s in steps if str(s.get("conclusion", "")).lower() == "failure"]
         step_names = " ".join([str(s.get("name", "")) for s in failed_steps])
-        
+
         combined_text = f"{name} {step_names} {payload.get('error_message', '')}"
 
-        matches = self.classify_text(combined_text, {"workflow_name": name, "failed_steps": failed_steps, "conclusion": conclusion})
+        matches = self.classify_text(
+            combined_text, {"workflow_name": name, "failed_steps": failed_steps, "conclusion": conclusion}
+        )
         if matches:
             return matches
 
@@ -214,10 +258,14 @@ class FailureClassifier:
                     category=CAT_DEPLOYMENT_FAILURE,
                     subcategory=SUB_DEPLOY_STATUS_FAILED,
                     confidence_level="MEDIUM",
-                    evidence={"workflow_name": name, "conclusion": conclusion, "raw_signal": "Failed deployment workflow"},
+                    evidence={
+                        "workflow_name": name,
+                        "conclusion": conclusion,
+                        "raw_signal": "Failed deployment workflow",
+                    },
                 )
             ]
-        
+
         return [
             ClassificationResult(
                 category=CAT_BUILD_FAILURE,
@@ -229,16 +277,9 @@ class FailureClassifier:
 
     def _classify_deployment(self, event_type: str, payload: Dict[str, Any]) -> List[ClassificationResult]:
         state = (
-            payload.get("state")
-            or payload.get("deployment_status", {}).get("state")
-            or payload.get("status")
-            or ""
+            payload.get("state") or payload.get("deployment_status", {}).get("state") or payload.get("status") or ""
         ).lower()
-        desc = (
-            payload.get("description")
-            or payload.get("deployment_status", {}).get("description")
-            or ""
-        )
+        desc = payload.get("description") or payload.get("deployment_status", {}).get("description") or ""
 
         if state in ("success", "active"):
             return []

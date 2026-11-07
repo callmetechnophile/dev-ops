@@ -22,21 +22,14 @@ def verify_github_signature(payload_bytes: bytes, signature_header: Optional[str
         return False
 
     expected_signature = signature_header.split("sha256=")[-1].strip()
-    mac = hmac.new(
-        key=settings.GITHUB_WEBHOOK_SECRET.encode("utf-8"),
-        msg=payload_bytes,
-        digestmod=hashlib.sha256
-    )
+    mac = hmac.new(key=settings.GITHUB_WEBHOOK_SECRET.encode("utf-8"), msg=payload_bytes, digestmod=hashlib.sha256)
     computed_signature = mac.hexdigest()
 
     return hmac.compare_digest(computed_signature, expected_signature)
 
 
 def validate_webhook_request(
-    payload_bytes: bytes,
-    signature_header: Optional[str],
-    event_header: Optional[str],
-    delivery_id: Optional[str]
+    payload_bytes: bytes, signature_header: Optional[str], event_header: Optional[str], delivery_id: Optional[str]
 ) -> Tuple[bool, Optional[str]]:
     """
     Comprehensive verification of incoming GitHub webhook request:
@@ -46,7 +39,10 @@ def validate_webhook_request(
     - HMAC SHA-256 signature match
     """
     if len(payload_bytes) > settings.MAX_WEBHOOK_PAYLOAD_BYTES:
-        return False, f"Payload size {len(payload_bytes)} bytes exceeds maximum allowed limit {settings.MAX_WEBHOOK_PAYLOAD_BYTES}"
+        return (
+            False,
+            f"Payload size {len(payload_bytes)} bytes exceeds maximum allowed limit {settings.MAX_WEBHOOK_PAYLOAD_BYTES}",
+        )
 
     if not event_header:
         return False, "Missing X-GitHub-Event header"

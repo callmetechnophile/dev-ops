@@ -10,6 +10,7 @@ class GUID(TypeDecorator):
     """Platform-independent GUID/UUID type.
     Uses PostgreSQL's native UUID type, otherwise uses CHAR(36).
     """
+
     impl = CHAR
     cache_ok = True
 
@@ -40,24 +41,14 @@ class GUID(TypeDecorator):
 
 
 class TimestampMixin:
-    created_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False,
-        index=True
-    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     updated_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False
+        nullable=False,
     )
 
 
 class TenantMixin:
-    tenant_id = Column(
-        GUID(),
-        ForeignKey("tenants.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
-    )
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)

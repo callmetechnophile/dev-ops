@@ -4,6 +4,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class RedisManager:
     def __init__(self):
         self._client = None
@@ -12,18 +13,17 @@ class RedisManager:
     async def connect(self) -> None:
         try:
             import redis.asyncio as aioredis
-            self._client = aioredis.from_url(
-                settings.REDIS_URL,
-                decode_responses=True,
-                socket_timeout=2.0
-            )
+
+            self._client = aioredis.from_url(settings.REDIS_URL, decode_responses=True, socket_timeout=2.0)
             await self._client.ping()
             self._is_connected = True
             logger.info("Connected to Redis successfully.")
         except Exception as e:
             self._is_connected = False
             self._client = None
-            logger.warning(f"Could not connect to Redis at {settings.REDIS_URL}: {e}. Operating in resilient fallback mode.")
+            logger.warning(
+                f"Could not connect to Redis at {settings.REDIS_URL}: {e}. Operating in resilient fallback mode."
+            )
 
     async def disconnect(self) -> None:
         if self._client:

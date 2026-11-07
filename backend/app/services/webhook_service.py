@@ -20,7 +20,7 @@ async def handle_github_webhook_delivery(
     event_type: str,
     signature: Optional[str],
     payload_dict: Dict[str, Any],
-    tenant_id: str = "00000000-0000-0000-0000-000000000001"
+    tenant_id: str = "00000000-0000-0000-0000-000000000001",
 ) -> Tuple[EventIngestResponse, bool]:
     """
     Ingests and persists raw webhook delivery with strict idempotency and Redis Stream forwarding.
@@ -32,10 +32,7 @@ async def handle_github_webhook_delivery(
 
     # 1. Deduplication check via delivery_id + tenant_id
     stmt = select(WebhookDelivery).where(
-        and_(
-            WebhookDelivery.tenant_id == tenant_uuid,
-            WebhookDelivery.delivery_id == delivery_id
-        )
+        and_(WebhookDelivery.tenant_id == tenant_uuid, WebhookDelivery.delivery_id == delivery_id)
     )
     result = await db.execute(stmt)
     existing = result.scalar_one_or_none()
@@ -43,14 +40,17 @@ async def handle_github_webhook_delivery(
     if existing:
         logger.info(f"Duplicate delivery received: {delivery_id} (event: {event_type}). Safely ignoring.")
         metrics.duplicate_events_total.labels(source="github_webhook").inc()
-        return EventIngestResponse(
-            accepted=True,
-            event_id=str(existing.id),
-            delivery_id=delivery_id,
-            idempotency_key=f"github:{delivery_id}",
-            status="duplicate_ignored",
-            message="Webhook delivery already processed."
-        ), False
+        return (
+            EventIngestResponse(
+                accepted=True,
+                event_id=str(existing.id),
+                delivery_id=delivery_id,
+                idempotency_key=f"github:{delivery_id}",
+                status="duplicate_ignored",
+                message="Webhook delivery already processed.",
+            ),
+            False,
+        )
 
     # 2. Persist new webhook delivery record
     delivery = WebhookDelivery(
@@ -61,7 +61,7 @@ async def handle_github_webhook_delivery(
         signature=signature,
         status="RECEIVED",
         payload=payload_dict,
-        received_at=datetime.now(timezone.utc)
+        received_at=datetime.now(timezone.utc),
     )
     db.add(delivery)
     await db.flush()
@@ -72,13 +72,10 @@ async def handle_github_webhook_delivery(
         "event_type": event_type,
         "tenant_id": tenant_id,
         "enqueued_at": datetime.now(timezone.utc).isoformat(),
-        "payload_json": json.dumps(payload_dict)
+        "payload_json": json.dumps(payload_dict),
     }
 
-    published_id = await redis_manager.publish_event(
-        settings.REDIS_STREAM_EVENTS,
-        stream_message
-    )
+    published_id = await redis_manager.publish_event(settings.REDIS_STREAM_EVENTS, stream_message)
 
     if published_id:
         delivery.status = "PUBLISHED"
@@ -89,11 +86,14 @@ async def handle_github_webhook_delivery(
 
     await db.flush()
 
-    return EventIngestResponse(
-        accepted=True,
-        event_id=str(delivery.id),
-        delivery_id=delivery_id,
-        idempotency_key=f"github:{delivery_id}",
-        status="queued" if published_id else "ingested_local",
-        message="Webhook delivery accepted and queued for processing."
-    ), True
+    return (
+        EventIngestResponse(
+            accepted=True,
+            event_id=str(delivery.id),
+            delivery_id=delivery_id,
+            idempotency_key=f"github:{delivery_id}",
+            status="queued" if published_id else "ingested_local",
+            message="Webhook delivery accepted and queued for processing.",
+        ),
+        True,
+    )

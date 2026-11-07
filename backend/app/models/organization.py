@@ -28,9 +28,7 @@ class Organization(Base, TimestampMixin):
     tenant = relationship("Tenant", back_populates="organizations")
     repositories = relationship("Repository", back_populates="organization")
 
-    __table_args__ = (
-        Index("ix_org_tenant_slug", "tenant_id", "slug", unique=True),
-    )
+    __table_args__ = (Index("ix_org_tenant_slug", "tenant_id", "slug", unique=True),)
 
 
 class User(Base, TimestampMixin):
@@ -46,6 +44,4 @@ class User(Base, TimestampMixin):
 
     tenant = relationship("Tenant", back_populates="users")
 
-    __table_args__ = (
-        Index("ix_user_tenant_email", "tenant_id", "email", unique=True),
-    )
+    __table_args__ = (Index("ix_user_tenant_email", "tenant_id", "email", unique=True),)

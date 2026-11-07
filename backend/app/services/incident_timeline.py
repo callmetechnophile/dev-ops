@@ -11,6 +11,7 @@ Reconstructs complete chronological operational timelines from:
 
 Preserves original occurred_at timestamps strictly.
 """
+
 from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
@@ -146,7 +147,9 @@ class IncidentTimelineService:
                             description=c.message,
                             occurred_at=c.committed_at,
                             source="github",
-                            relationship_type="contributing" if c.committed_at >= incident.first_observed_at else "correlated",
+                            relationship_type=(
+                                "contributing" if c.committed_at >= incident.first_observed_at else "correlated"
+                            ),
                             evidence_reference={"branch": c.branch, "sha": c.commit_sha},
                         )
                     )
@@ -178,7 +181,11 @@ class IncidentTimelineService:
                             record_id=str(dep.id),
                             event_type=f"deployment.{dep.status.lower()}",
                             title=f"Deployment {dep.status} on {dep.environment}",
-                            description=f"Finished in {dep.duration_seconds:.1f}s" if dep.duration_seconds else f"Finished with status {dep.status}",
+                            description=(
+                                f"Finished in {dep.duration_seconds:.1f}s"
+                                if dep.duration_seconds
+                                else f"Finished with status {dep.status}"
+                            ),
                             occurred_at=dep.finished_at,
                             source="github",
                             relationship_type="triggering" if dep.status == "FAILED" else "recovery",

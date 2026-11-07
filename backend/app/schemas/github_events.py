@@ -20,6 +20,7 @@ class GitHubCommitInfo(BaseModel):
 
 class PushEvent(BaseModel):
     """Normalized push event representation."""
+
     ref: str
     before: Optional[str] = None
     after: str  # Head commit SHA
@@ -40,6 +41,7 @@ class PushEvent(BaseModel):
 
 class PullRequestEvent(BaseModel):
     """Normalized pull_request event representation."""
+
     action: str  # opened, closed, synchronize, reopened, etc.
     number: int
     pr_id: str
@@ -64,6 +66,7 @@ class PullRequestEvent(BaseModel):
 
 class WorkflowRunEvent(BaseModel):
     """Normalized workflow_run event representation."""
+
     action: str  # requested, in_progress, completed
     run_id: str
     name: str
@@ -88,6 +91,7 @@ class WorkflowRunEvent(BaseModel):
 
 class WorkflowJobEvent(BaseModel):
     """Normalized workflow_job event representation."""
+
     action: str  # queued, in_progress, completed
     job_id: str
     run_id: str
@@ -106,6 +110,7 @@ class WorkflowJobEvent(BaseModel):
 
 class DeploymentEvent(BaseModel):
     """Normalized deployment and deployment_status event representation."""
+
     action: str  # created, updated
     deployment_id: str
     deployment_status_id: Optional[str] = None

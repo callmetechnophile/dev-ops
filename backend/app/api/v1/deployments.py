@@ -28,7 +28,7 @@ async def list_deployments(
     status_filter: Optional[str] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Deployment)
     if service_id:
@@ -59,17 +59,13 @@ async def list_deployments(
             finished_at=d.finished_at,
             duration_seconds=d.duration_seconds,
             created_at=d.created_at,
-            metadata_json=d.metadata_json or {}
+            metadata_json=d.metadata_json or {},
         )
         for d in deployments
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )
 
 
@@ -103,7 +99,7 @@ async def get_deployment(id: str, db: AsyncSession = Depends(get_db)):
         finished_at=d.finished_at,
         duration_seconds=d.duration_seconds,
         created_at=d.created_at,
-        metadata_json=d.metadata_json or {}
+        metadata_json=d.metadata_json or {},
     )
 
 
@@ -129,12 +125,7 @@ async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
     timeline_items: List[DeploymentTimelineItem] = []
 
     # 1. Correlated Commit
-    c_stmt = select(Commit).where(
-        and_(
-            Commit.tenant_id == d.tenant_id,
-            Commit.commit_sha == d.commit_sha
-        )
-    )
+    c_stmt = select(Commit).where(and_(Commit.tenant_id == d.tenant_id, Commit.commit_sha == d.commit_sha))
     c_res = await db.execute(c_stmt)
     commit = c_res.scalar_one_or_none()
     if commit:
@@ -147,16 +138,13 @@ async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
                 timestamp=commit.committed_at,
                 actor=commit.author_login or commit.author_name,
                 reference_id=commit.commit_sha,
-                metadata={"additions": commit.stats_additions, "deletions": commit.stats_deletions}
+                metadata={"additions": commit.stats_additions, "deletions": commit.stats_deletions},
             )
         )
 
         # 2. Correlated Pull Request
         pr_stmt = select(PullRequest).where(
-            and_(
-                PullRequest.tenant_id == d.tenant_id,
-                PullRequest.head_sha == commit.commit_sha
-            )
+            and_(PullRequest.tenant_id == d.tenant_id, PullRequest.head_sha == commit.commit_sha)
         )
         pr_res = await db.execute(pr_stmt)
         pr = pr_res.scalar_one_or_none()
@@ -169,17 +157,16 @@ async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
                     status="merged",
                     timestamp=pr.merged_at,
                     actor=pr.author_login,
-                    reference_id=str(pr.number)
+                    reference_id=str(pr.number),
                 )
             )
 
     # 3. Correlated Workflow Runs
-    w_stmt = select(WorkflowRun).where(
-        and_(
-            WorkflowRun.tenant_id == d.tenant_id,
-            WorkflowRun.head_sha == d.commit_sha
-        )
-    ).order_by(WorkflowRun.started_at.asc())
+    w_stmt = (
+        select(WorkflowRun)
+        .where(and_(WorkflowRun.tenant_id == d.tenant_id, WorkflowRun.head_sha == d.commit_sha))
+        .order_by(WorkflowRun.started_at.asc())
+    )
     w_res = await db.execute(w_stmt)
     workflows = w_res.scalars().all()
     for w in workflows:
@@ -192,14 +179,16 @@ async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
                 timestamp=w.started_at,
                 actor=w.actor_login,
                 reference_id=w.github_run_id,
-                metadata={"duration_seconds": w.duration_seconds}
+                metadata={"duration_seconds": w.duration_seconds},
             )
         )
 
     # 4. Approvals
-    app_stmt = select(ApprovalRequest).where(
-        ApprovalRequest.deployment_id == d.id
-    ).options(selectinload(ApprovalRequest.decisions))
+    app_stmt = (
+        select(ApprovalRequest)
+        .where(ApprovalRequest.deployment_id == d.id)
+        .options(selectinload(ApprovalRequest.decisions))
+    )
     app_res = await db.execute(app_stmt)
     app_requests = app_res.scalars().all()
     for ar in app_requests:
@@ -212,7 +201,7 @@ async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
                     status=dec.decision,
                     timestamp=dec.decided_at,
                     reference_id=str(dec.id),
-                    metadata={"audit_signature": dec.audit_signature}
+                    metadata={"audit_signature": dec.audit_signature},
                 )
             )
 
@@ -226,7 +215,7 @@ async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
                 status=de.status,
                 timestamp=de.occurred_at,
                 actor=de.creator_login,
-                reference_id=de.github_deployment_status_id or de.github_deployment_id
+                reference_id=de.github_deployment_status_id or de.github_deployment_id,
             )
         )
 
@@ -238,7 +227,7 @@ async def get_deployment_timeline(id: str, db: AsyncSession = Depends(get_db)):
         environment=d.environment,
         commit_sha=d.commit_sha,
         current_status=d.status,
-        timeline=timeline_items
+        timeline=timeline_items,
     )
 
 
@@ -284,8 +273,8 @@ async def get_deployment_risk(id: str, db: AsyncSession = Depends(get_db)):
                 "rationale": r.rationale,
                 "mitigation_steps": r.mitigation_steps or [],
                 "confidence_score": r.confidence_score,
-                "requires_approval": r.requires_approval
+                "requires_approval": r.requires_approval,
             }
             for r in assessment.recommendations
-        ]
+        ],
     )

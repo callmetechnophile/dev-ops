@@ -339,11 +339,7 @@ async def list_models(
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = (
-        select(ModelVersion)
-        .where(ModelVersion.tenant_id == tenant_id)
-        .order_by(desc(ModelVersion.trained_at))
-    )
+    stmt = select(ModelVersion).where(ModelVersion.tenant_id == tenant_id).order_by(desc(ModelVersion.trained_at))
     res = await db.execute(stmt)
     models = res.scalars().all()
 

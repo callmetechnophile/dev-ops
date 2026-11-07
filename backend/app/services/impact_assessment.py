@@ -4,6 +4,7 @@ Evaluates potential operational impact separately from failure probability.
 Traverses service dependency graphs to identify direct, downstream, and critical
 tier-1 service exposures.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -101,7 +102,7 @@ class BlastRadiusImpactService:
             )
         ]
 
-        critical_exposed = (target_tier == "tier-1")
+        critical_exposed = target_tier == "tier-1"
 
         # Map for quick service name lookup
         all_svc_stmt = select(Service).where(Service.tenant_id == tenant_id)

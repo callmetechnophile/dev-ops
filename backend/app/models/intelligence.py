@@ -14,8 +14,7 @@ class RemediationAction(Base, TimestampMixin, TenantMixin):
     incident_id = Column(GUID(), ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False, index=True)
     failure_id = Column(GUID(), ForeignKey("failures.id", ondelete="SET NULL"), nullable=True)
     action_type = Column(
-        String(100),
-        nullable=False
+        String(100), nullable=False
     )  # ROLLBACK, CONFIG_PATCH, RESOURCE_QUOTA_BUMP, RESTART, DEPENDENCY_PIN
     description = Column(Text, nullable=False)
     runbook_url = Column(String(512), nullable=True)
@@ -23,7 +22,9 @@ class RemediationAction(Base, TimestampMixin, TenantMixin):
     is_automated_executable = Column(String(10), default="false", nullable=False)
     proposed_by = Column(String(255), default="SYSTEM", nullable=False)
     approved_by = Column(String(255), nullable=True)
-    execution_status = Column(String(50), default="RECORDED", nullable=False)  # RECORDED, PROPOSED, APPROVED, EXECUTED, FAILED
+    execution_status = Column(
+        String(50), default="RECORDED", nullable=False
+    )  # RECORDED, PROPOSED, APPROVED, EXECUTED, FAILED
     outcome = Column(String(50), nullable=True)  # SUCCESS, PARTIAL_SUCCESS, FAILED, UNKNOWN
     effectiveness = Column(String(50), nullable=True)  # HIGH, MEDIUM, LOW, INEFFECTIVE
 
@@ -39,7 +40,7 @@ class RiskAssessment(Base, TimestampMixin, TenantMixin):
     service_id = Column(GUID(), ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True)
     repository_id = Column(GUID(), ForeignKey("repositories.id", ondelete="SET NULL"), nullable=True, index=True)
     environment = Column(String(100), default="production", nullable=False, index=True)
-    
+
     overall_risk_score = Column(Float, nullable=False)  # 0.00 to 1.00
     risk_level = Column(String(20), nullable=False, index=True)  # LOW, MEDIUM, HIGH, CRITICAL
     risk_category = Column(String(50), default="LOW", nullable=False, index=True)
@@ -58,7 +59,7 @@ class RiskAssessment(Base, TimestampMixin, TenantMixin):
     calibration_version = Column(String(100), nullable=True)
     explanation = Column(Text, nullable=True)
     assessment_status = Column(String(50), default="COMPLETED", nullable=False)
-    
+
     assessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     evaluated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -70,12 +71,13 @@ class Recommendation(Base, TimestampMixin, TenantMixin):
     __tablename__ = "recommendations"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    risk_assessment_id = Column(GUID(), ForeignKey("risk_assessments.id", ondelete="CASCADE"), nullable=False, index=True)
+    risk_assessment_id = Column(
+        GUID(), ForeignKey("risk_assessments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False, index=True)
     execution_id = Column(GUID(), ForeignKey("agent_executions.id", ondelete="SET NULL"), nullable=True, index=True)
     recommendation_type = Column(
-        String(50),
-        nullable=False
+        String(50), nullable=False
     )  # PROCEED_WITH_CANARY, BLOCK_DEPLOYMENT, ROLLBACK_PREPARATION, REQUIRE_CONFIG_REVIEW, SCALE_DOWN
     title = Column(String(255), nullable=False)
     rationale = Column(Text, nullable=False)

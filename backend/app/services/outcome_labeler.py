@@ -6,6 +6,7 @@ Extracts trustworthy ground-truth outcomes from real historical deployment recor
 - Explicitly flags unobserved / recent deployments as CENSORED (excluded from training)
 - Never fabricates outcomes or assumes unobserved deployments succeeded.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -125,7 +126,9 @@ class OutcomeLabelingService:
                     verification_status = "VERIFIED"
                 else:
                     outcome_label = LABEL_CENSORED
-                    failure_reason = f"Ambiguous deployment state '{deployment.status}' without explicit failure or success."
+                    failure_reason = (
+                        f"Ambiguous deployment state '{deployment.status}' without explicit failure or success."
+                    )
                     verification_status = "UNVERIFIED"
 
         if existing_label:
@@ -158,11 +161,7 @@ class OutcomeLabelingService:
         observation_window_minutes: int = DEFAULT_OBSERVATION_WINDOW_MINUTES,
     ) -> List[LabeledDeploymentOutcome]:
         """Labels all historical deployments and returns the clean verified training corpus."""
-        stmt = (
-            select(Deployment)
-            .where(Deployment.tenant_id == tenant_id)
-            .order_by(Deployment.created_at.asc())
-        )
+        stmt = select(Deployment).where(Deployment.tenant_id == tenant_id).order_by(Deployment.created_at.asc())
         res = await db.execute(stmt)
         deployments = res.scalars().all()
 

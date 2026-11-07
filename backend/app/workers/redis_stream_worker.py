@@ -47,19 +47,11 @@ class RedisStreamWorker:
 
     async def _init_redis(self):
         import redis.asyncio as aioredis
-        self._client = aioredis.from_url(
-            settings.REDIS_URL,
-            decode_responses=True,
-            socket_timeout=5.0
-        )
+
+        self._client = aioredis.from_url(settings.REDIS_URL, decode_responses=True, socket_timeout=5.0)
         # Ensure consumer group exists
         try:
-            await self._client.xgroup_create(
-                name=self.stream_key,
-                groupname=self.group_name,
-                id="0",
-                mkstream=True
-            )
+            await self._client.xgroup_create(name=self.stream_key, groupname=self.group_name, id="0", mkstream=True)
             logger.info(f"Consumer group '{self.group_name}' created on stream '{self.stream_key}'.")
         except Exception as e:
             if "BUSYGROUP" not in str(e):
@@ -81,7 +73,7 @@ class RedisStreamWorker:
                     consumername=self.consumer_name,
                     streams={self.stream_key: ">"},
                     count=10,
-                    block=2000
+                    block=2000,
                 )
 
                 if response:
@@ -109,7 +101,7 @@ class RedisStreamWorker:
                 consumername=self.consumer_name,
                 min_idle_time=30000,
                 start_id="0-0",
-                count=5
+                count=5,
             )
             claimed_messages = res[1] if res and len(res) > 1 else []
             for message_id, data in claimed_messages:
@@ -145,8 +137,7 @@ class RedisStreamWorker:
         except Exception as e:
             logger.error(f"Failed processing message {message_id}: {e}", exc_info=True)
             metrics.github_webhook_processing_errors_total.labels(
-                event_type=event_type,
-                error_type=type(e).__name__
+                event_type=event_type, error_type=type(e).__name__
             ).inc()
 
             if retry_count < self.max_retries:
@@ -164,12 +155,7 @@ class RedisStreamWorker:
                 logger.critical(f"Message {message_id} routed to dead letter stream: {self.dead_letter_key}")
 
     async def process_event(
-        self,
-        db: AsyncSession,
-        delivery_id: str,
-        event_type: str,
-        payload: Dict[str, Any],
-        tenant_id: str
+        self, db: AsyncSession, delivery_id: str, event_type: str, payload: Dict[str, Any], tenant_id: str
     ):
         """
         Executes normalization, persistence to events ledger, and deterministic correlation.
@@ -178,19 +164,13 @@ class RedisStreamWorker:
 
         # 1. Normalize
         normalized_contract, specific_event = normalize_github_event(
-            event_type=event_type,
-            delivery_id=delivery_id,
-            payload=payload,
-            tenant_id=tenant_id
+            event_type=event_type, delivery_id=delivery_id, payload=payload, tenant_id=tenant_id
         )
 
         # 2. Persist to immutable normalized events ledger
         # Deduplication check for events table
         stmt = select(Event).where(
-            and_(
-                Event.tenant_id == tenant_uuid,
-                Event.idempotency_key == normalized_contract.idempotency_key
-            )
+            and_(Event.tenant_id == tenant_uuid, Event.idempotency_key == normalized_contract.idempotency_key)
         )
         res = await db.execute(stmt)
         existing_event = res.scalar_one_or_none()
@@ -203,16 +183,20 @@ class RedisStreamWorker:
                 source="github",
                 event_type=normalized_contract.event_type,
                 schema_version=normalized_contract.schema_version,
-                repository_id=uuid.UUID(normalized_contract.repository_id) if normalized_contract.repository_id else None,
+                repository_id=(
+                    uuid.UUID(normalized_contract.repository_id) if normalized_contract.repository_id else None
+                ),
                 service_id=uuid.UUID(normalized_contract.service_id) if normalized_contract.service_id else None,
-                deployment_id=uuid.UUID(normalized_contract.deployment_id) if normalized_contract.deployment_id else None,
+                deployment_id=(
+                    uuid.UUID(normalized_contract.deployment_id) if normalized_contract.deployment_id else None
+                ),
                 commit_sha=normalized_contract.commit_sha,
                 environment=normalized_contract.environment,
                 occurred_at=normalized_contract.occurred_at,
                 received_at=normalized_contract.received_at,
                 correlation_id=normalized_contract.correlation_id,
                 idempotency_key=normalized_contract.idempotency_key,
-                payload=payload
+                payload=payload,
             )
             db.add(db_event)
             await db.flush()
@@ -246,10 +230,7 @@ class RedisStreamWorker:
 
         # 5. Mark webhook delivery as PROCESSED
         w_stmt = select(WebhookDelivery).where(
-            and_(
-                WebhookDelivery.tenant_id == tenant_uuid,
-                WebhookDelivery.delivery_id == delivery_id
-            )
+            and_(WebhookDelivery.tenant_id == tenant_uuid, WebhookDelivery.delivery_id == delivery_id)
         )
         w_res = await db.execute(w_stmt)
         delivery = w_res.scalar_one_or_none()

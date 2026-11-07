@@ -17,7 +17,7 @@ async def list_recommendations(
     recommendation_type: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Recommendation)
     if deployment_id:
@@ -39,15 +39,11 @@ async def list_recommendations(
             rationale=r.rationale,
             mitigation_steps=r.mitigation_steps or [],
             confidence_score=r.confidence_score,
-            requires_approval=r.requires_approval
+            requires_approval=r.requires_approval,
         )
         for r in records
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )

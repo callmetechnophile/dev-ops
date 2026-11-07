@@ -51,7 +51,7 @@ async def list_approvals(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = (
         select(ApprovalRequest)
@@ -89,20 +89,16 @@ async def list_approvals(
                     decision=d.decision,
                     justification=d.justification or d.notes or "",
                     audit_signature=d.audit_signature,
-                    decided_at=d.decided_at
+                    decided_at=d.decided_at,
                 )
                 for d in r.decisions
-            ]
+            ],
         )
         for r in requests
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )
 
 
@@ -144,11 +140,15 @@ async def get_approval_request(
         "risk_assessment_version": r.risk_assessment_version,
         "context_data": r.context_data or {},
         "created_at": r.created_at,
-        "recommendation": {
-            "title": r.recommendation.title,
-            "rationale": r.recommendation.rationale,
-            "mitigation_steps": r.recommendation.mitigation_steps,
-        } if r.recommendation else None,
+        "recommendation": (
+            {
+                "title": r.recommendation.title,
+                "rationale": r.recommendation.rationale,
+                "mitigation_steps": r.recommendation.mitigation_steps,
+            }
+            if r.recommendation
+            else None
+        ),
         "decisions": [
             {
                 "id": str(d.id),
@@ -169,7 +169,7 @@ async def submit_approval_decision(
     id: str,
     payload: SubmitDecisionPayload,
     tenant_id: uuid.UUID = Depends(get_tenant_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Submits human approval decision (APPROVE / REJECT / REQUEST_MORE_INFORMATION / ESCALATE).
     Enforces server-side RBAC, expiration check, and cryptographic SHA-256 audit fingerprint signing.
@@ -196,7 +196,9 @@ async def submit_approval_decision(
 
     if not user:
         # Fallback to default approver user in tenant
-        u_stmt = select(User).where(and_(User.tenant_id == tenant_id, User.role.in_(["approver", "admin", "lead"]))).limit(1)
+        u_stmt = (
+            select(User).where(and_(User.tenant_id == tenant_id, User.role.in_(["approver", "admin", "lead"]))).limit(1)
+        )
         u_res = await db.execute(u_stmt)
         user = u_res.scalars().first()
 
@@ -222,7 +224,9 @@ async def submit_approval_decision(
 
     try:
         # Check if request has an execution
-        stmt = select(ApprovalRequest).where(and_(ApprovalRequest.id == req_uuid, ApprovalRequest.tenant_id == tenant_id))
+        stmt = select(ApprovalRequest).where(
+            and_(ApprovalRequest.id == req_uuid, ApprovalRequest.tenant_id == tenant_id)
+        )
         r_res = await db.execute(stmt)
         req = r_res.scalar_one_or_none()
         if not req:

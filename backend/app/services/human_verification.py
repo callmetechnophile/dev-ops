@@ -6,6 +6,7 @@ Enforces:
 - Immutable audit trail.
 - LLMs are strictly forbidden from confirming root causes.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -69,14 +70,11 @@ class HumanVerificationService:
         req: ConfirmHypothesisRequest,
     ) -> ConfirmedRootCause:
         # 1. Fetch hypothesis with incident check
-        h_stmt = (
-            select(RootCauseHypothesis)
-            .where(
-                and_(
-                    RootCauseHypothesis.id == hypothesis_id,
-                    RootCauseHypothesis.incident_id == incident_id,
-                    RootCauseHypothesis.tenant_id == tenant_id,
-                )
+        h_stmt = select(RootCauseHypothesis).where(
+            and_(
+                RootCauseHypothesis.id == hypothesis_id,
+                RootCauseHypothesis.incident_id == incident_id,
+                RootCauseHypothesis.tenant_id == tenant_id,
             )
         )
         h_res = await db.execute(h_stmt)
@@ -172,14 +170,11 @@ class HumanVerificationService:
         hypothesis_id: uuid.UUID,
         req: RejectHypothesisRequest,
     ) -> RootCauseHypothesis:
-        h_stmt = (
-            select(RootCauseHypothesis)
-            .where(
-                and_(
-                    RootCauseHypothesis.id == hypothesis_id,
-                    RootCauseHypothesis.incident_id == incident_id,
-                    RootCauseHypothesis.tenant_id == tenant_id,
-                )
+        h_stmt = select(RootCauseHypothesis).where(
+            and_(
+                RootCauseHypothesis.id == hypothesis_id,
+                RootCauseHypothesis.incident_id == incident_id,
+                RootCauseHypothesis.tenant_id == tenant_id,
             )
         )
         h_res = await db.execute(h_stmt)
@@ -200,14 +195,11 @@ class HumanVerificationService:
         hypothesis_id: uuid.UUID,
         req: InsufficientEvidenceRequest,
     ) -> RootCauseHypothesis:
-        h_stmt = (
-            select(RootCauseHypothesis)
-            .where(
-                and_(
-                    RootCauseHypothesis.id == hypothesis_id,
-                    RootCauseHypothesis.incident_id == incident_id,
-                    RootCauseHypothesis.tenant_id == tenant_id,
-                )
+        h_stmt = select(RootCauseHypothesis).where(
+            and_(
+                RootCauseHypothesis.id == hypothesis_id,
+                RootCauseHypothesis.incident_id == incident_id,
+                RootCauseHypothesis.tenant_id == tenant_id,
             )
         )
         h_res = await db.execute(h_stmt)
@@ -217,7 +209,9 @@ class HumanVerificationService:
 
         hypothesis.confidence_level = "INSUFFICIENT_EVIDENCE"
         hypothesis.status = "UNKNOWN"
-        hypothesis.explanation = f"{hypothesis.explanation}\n[MARKED INSUFFICIENT EVIDENCE by {req.reviewed_by}]: {req.notes}"
+        hypothesis.explanation = (
+            f"{hypothesis.explanation}\n[MARKED INSUFFICIENT EVIDENCE by {req.reviewed_by}]: {req.notes}"
+        )
         await db.flush()
         return hypothesis
 

@@ -15,6 +15,7 @@ Invariants:
 - Never executes production changes autonomously.
 - Persists evaluation evidence and policy version pinning.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -104,7 +105,7 @@ class AgentPolicyEngine:
         stmt = select(DeploymentPolicy).where(
             and_(
                 DeploymentPolicy.tenant_id == execution.tenant_id,
-                DeploymentPolicy.enabled == True,
+                DeploymentPolicy.enabled.is_(True),
             )
         )
         res = await db.execute(stmt)
@@ -166,7 +167,9 @@ class AgentPolicyEngine:
         evidence["missing_context"] = context.missing_context
         if missing_count >= 3:
             outcome = OUTCOME_INSUFFICIENT_EVIDENCE
-            reasons.append(f"Deployment missing {missing_count} critical telemetry signals ({', '.join(context.missing_context)}).")
+            reasons.append(
+                f"Deployment missing {missing_count} critical telemetry signals ({', '.join(context.missing_context)})."
+            )
             return PolicyEvaluationResult(
                 policy_id=str(policy.id),
                 policy_name=policy.name,
@@ -180,12 +183,15 @@ class AgentPolicyEngine:
         # 2. Check active critical incidents (RECOMMEND_DELAY)
         if defn.get("block_on_active_p1_incident", True):
             active_p1s = [
-                inc for inc in op_mem.get("similar_incidents", [])
+                inc
+                for inc in op_mem.get("similar_incidents", [])
                 if inc.get("status") in ("OPEN", "MITIGATING") and inc.get("severity") in ("P1", "CRITICAL")
             ]
             if active_p1s:
                 outcome = OUTCOME_RECOMMEND_DELAY
-                reasons.append(f"Found {len(active_p1s)} active unresolved P1/Critical incident(s) on target component. Recommending deployment delay.")
+                reasons.append(
+                    f"Found {len(active_p1s)} active unresolved P1/Critical incident(s) on target component. Recommending deployment delay."
+                )
                 evidence["active_critical_incidents"] = [i["key"] for i in active_p1s]
 
         # 3. Check CI Test Results (RECOMMEND_DELAY or REQUIRE_APPROVAL)
@@ -194,7 +200,9 @@ class AgentPolicyEngine:
                 if build_info.get("status") == "FAILED" or build_info.get("tests_failed", 0) > 0:
                     outcome = OUTCOME_RECOMMEND_DELAY
                     failed_tests = build_info.get("tests_failed", 1)
-                    reasons.append(f"CI build reported failure ({failed_tests} test failures). Verification incomplete.")
+                    reasons.append(
+                        f"CI build reported failure ({failed_tests} test failures). Verification incomplete."
+                    )
                     evidence["ci_test_failure"] = True
             elif "build_telemetry" in context.missing_context:
                 reasons.append("CI build telemetry was not provided; cannot verify automated test execution.")
@@ -214,7 +222,9 @@ class AgentPolicyEngine:
         if (impact_score > max_impact or is_tier1) and defn.get("require_additional_review_tier1", True):
             if outcome == OUTCOME_ALLOW:
                 outcome = OUTCOME_REQUIRE_ADDITIONAL_REVIEW
-            reasons.append(f"Target service is {service_tier} with high operational blast radius ({impact_score:.2f}). Requires senior reviewer authorization.")
+            reasons.append(
+                f"Target service is {service_tier} with high operational blast radius ({impact_score:.2f}). Requires senior reviewer authorization."
+            )
             evidence["tier1_critical"] = True
 
         # 6. Check Environment Review Requirement
@@ -222,7 +232,9 @@ class AgentPolicyEngine:
         if environment in req_envs:
             if outcome == OUTCOME_ALLOW:
                 outcome = OUTCOME_REQUIRE_APPROVAL
-            reasons.append(f"Deployment environment '{environment}' requires mandatory human sign-off per organizational policy.")
+            reasons.append(
+                f"Deployment environment '{environment}' requires mandatory human sign-off per organizational policy."
+            )
             evidence["environment"] = environment
 
         required_reviewers = 2 if outcome == OUTCOME_REQUIRE_ADDITIONAL_REVIEW else 1

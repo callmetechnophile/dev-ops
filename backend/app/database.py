@@ -18,11 +18,11 @@ is_sqlite = "sqlite" in settings.DATABASE_URL
 engine_kwargs: Dict[str, Any] = {}
 if not is_sqlite:
     engine_kwargs = {
-        "pool_pre_ping": True,     # Validates connection liveness before checkout
-        "pool_size": 15,            # Stable baseline connections
-        "max_overflow": 25,         # Allowed burst connections
-        "pool_timeout": 30.0,       # Wait up to 30s during traffic spikes
-        "pool_recycle": 1800,       # Recycle connections every 30m to avoid stale firewall cuts
+        "pool_pre_ping": True,  # Validates connection liveness before checkout
+        "pool_size": 15,  # Stable baseline connections
+        "max_overflow": 25,  # Allowed burst connections
+        "pool_timeout": 30.0,  # Wait up to 30s during traffic spikes
+        "pool_recycle": 1800,  # Recycle connections every 30m to avoid stale firewall cuts
     }
 
 engine = create_async_engine(
@@ -32,12 +32,7 @@ engine = create_async_engine(
     **engine_kwargs,
 )
 
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False
-)
+AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
 
 Base = declarative_base()
 

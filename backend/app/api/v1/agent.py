@@ -7,6 +7,7 @@ Provides REST interfaces for:
 - Recommendations (/executions/{id}/recommendations)
 - Post-Deployment Outcome Monitoring (/executions/{id}/outcomes, /executions/{id}/advance-outcome)
 """
+
 from __future__ import annotations
 import uuid
 from typing import List, Optional, Dict, Any
@@ -18,7 +19,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models.agent import AgentExecution, AgentStateTransition, DeploymentPolicy, PolicyEvaluation, OutcomeObservation
+from app.models.agent import (
+    AgentExecution,
+    AgentStateTransition,
+    DeploymentPolicy,
+    PolicyEvaluation,
+    OutcomeObservation,
+)
 from app.models.deployment import Deployment
 from app.models.governance import ApprovalRequest
 from app.models.intelligence import Recommendation
@@ -66,9 +73,12 @@ class UpdateDeploymentPolicyRequest(BaseModel):
 # Agent Executions
 # --------------------------------------------------------------------------
 
+
 @router.get("/executions")
 async def list_agent_executions(
-    status: Optional[str] = Query(None, description="Filter by status (RUNNING, WAITING_FOR_APPROVAL, COMPLETED, FAILED)"),
+    status: Optional[str] = Query(
+        None, description="Filter by status (RUNNING, WAITING_FOR_APPROVAL, COMPLETED, FAILED)"
+    ),
     state: Optional[str] = Query(None, description="Filter by current state"),
     environment: Optional[str] = Query(None, description="Filter by environment"),
     page: int = Query(1, ge=1),
@@ -382,6 +392,7 @@ async def advance_execution_outcome(
 # --------------------------------------------------------------------------
 # Deployment Policies
 # --------------------------------------------------------------------------
+
 
 @router.get("/policies")
 async def list_deployment_policies(

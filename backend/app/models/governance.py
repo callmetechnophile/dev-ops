@@ -15,9 +15,13 @@ class ApprovalRequest(Base, TimestampMixin, TenantMixin):
     execution_id = Column(GUID(), ForeignKey("agent_executions.id", ondelete="SET NULL"), nullable=True, index=True)
     recommendation_id = Column(GUID(), ForeignKey("recommendations.id", ondelete="SET NULL"), nullable=True, index=True)
     assigned_reviewer_id = Column(GUID(), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    
-    requested_action = Column(String(100), nullable=False)  # DEPLOY_TO_PRODUCTION, PROCEED_CANARY_ROLLOUT, ABORT_DEPLOYMENT
-    status = Column(String(50), default="WAITING_FOR_APPROVAL", nullable=False, index=True)  # WAITING_FOR_APPROVAL, APPROVED, REJECTED, EXPIRED, REQUEST_MORE_INFO, ESCALATED
+
+    requested_action = Column(
+        String(100), nullable=False
+    )  # DEPLOY_TO_PRODUCTION, PROCEED_CANARY_ROLLOUT, ABORT_DEPLOYMENT
+    status = Column(
+        String(50), default="WAITING_FOR_APPROVAL", nullable=False, index=True
+    )  # WAITING_FOR_APPROVAL, APPROVED, REJECTED, EXPIRED, REQUEST_MORE_INFO, ESCALATED
     expires_at = Column(DateTime(timezone=True), nullable=True)
     policy_version = Column(String(50), nullable=True)
     risk_assessment_version = Column(String(50), nullable=True)
@@ -34,7 +38,9 @@ class ApprovalDecision(Base, TimestampMixin, TenantMixin):
     __tablename__ = "approval_decisions"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    approval_request_id = Column(GUID(), ForeignKey("approval_requests.id", ondelete="CASCADE"), nullable=False, index=True)
+    approval_request_id = Column(
+        GUID(), ForeignKey("approval_requests.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     decided_by_user_id = Column(GUID(), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     decision = Column(String(50), nullable=False)  # APPROVED, REJECTED, REQUEST_MORE_INFORMATION, ESCALATED
     justification = Column(Text, nullable=False)

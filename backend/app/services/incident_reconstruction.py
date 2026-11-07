@@ -3,6 +3,7 @@
 Reconstructs operational incidents from failure signals, correlates events via stable identifiers,
 maintains incident lifecycle, and attaches chronological evidence.
 """
+
 from __future__ import annotations
 import logging
 import uuid
@@ -61,8 +62,7 @@ class IncidentReconstructionEngine:
 
         # Filter out non-failures or purely cancelled/skipped workflows
         active_failures = [
-            c for c in classifications
-            if c.is_terminal_failure and c.subcategory != SUB_CANCELLED_OR_SKIPPED
+            c for c in classifications if c.is_terminal_failure and c.subcategory != SUB_CANCELLED_OR_SKIPPED
         ]
 
         if not active_failures:
@@ -189,10 +189,7 @@ class IncidentReconstructionEngine:
             return None
 
         stmt = (
-            select(Incident)
-            .where(and_(*conditions, or_(*id_conditions)))
-            .order_by(desc(Incident.detected_at))
-            .limit(1)
+            select(Incident).where(and_(*conditions, or_(*id_conditions))).order_by(desc(Incident.detected_at)).limit(1)
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

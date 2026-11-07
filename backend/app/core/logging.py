@@ -28,10 +28,7 @@ def redact_sensitive_value(val: Any) -> Any:
         val = SECRET_PATTERN.sub("[REDACTED_GITHUB_TOKEN]", val)
         return val
     elif isinstance(val, dict):
-        return {
-            k: ("[REDACTED]" if k.lower() in SENSITIVE_KEYS else redact_sensitive_value(v))
-            for k, v in val.items()
-        }
+        return {k: ("[REDACTED]" if k.lower() in SENSITIVE_KEYS else redact_sensitive_value(v)) for k, v in val.items()}
     elif isinstance(val, list):
         return [redact_sensitive_value(item) for item in val]
     return val

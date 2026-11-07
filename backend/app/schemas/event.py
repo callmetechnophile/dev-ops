@@ -9,6 +9,7 @@ class NormalizedEventContract(BaseModel):
     Unified, immutable event contract used across all integrations.
     Section 4 & Section 6 of Specification.
     """
+
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     tenant_id: str
     source: str = Field(description="Integration source e.g. github, docker, kubernetes, prometheus")

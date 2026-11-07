@@ -27,9 +27,7 @@ class Commit(Base, TimestampMixin, TenantMixin):
     changes = relationship("Change", back_populates="commit", cascade="all, delete-orphan")
     workflow_runs = relationship("WorkflowRun", back_populates="commit")
 
-    __table_args__ = (
-        Index("ix_commit_tenant_repo_sha", "tenant_id", "repository_id", "commit_sha", unique=True),
-    )
+    __table_args__ = (Index("ix_commit_tenant_repo_sha", "tenant_id", "repository_id", "commit_sha", unique=True),)
 
 
 class Change(Base, TimestampMixin, TenantMixin):
@@ -77,13 +75,10 @@ class Deployment(Base, TimestampMixin, TenantMixin):
     environment = Column(String(100), default="production", nullable=False, index=True)
     commit_sha = Column(String(64), nullable=False, index=True)
     status = Column(
-        String(50),
-        default="PENDING",
-        nullable=False,
-        index=True
+        String(50), default="PENDING", nullable=False, index=True
     )  # DEPLOYMENT_DETECTED, CONTEXT_COLLECTION, HISTORICAL_RETRIEVAL, RISK_ASSESSMENT,
-       # RECOMMENDATION_GENERATED, WAITING_FOR_APPROVAL, APPROVED, REJECTED,
-       # IN_PROGRESS, SUCCEEDED, FAILED, ROLLED_BACK
+    # RECOMMENDATION_GENERATED, WAITING_FOR_APPROVAL, APPROVED, REJECTED,
+    # IN_PROGRESS, SUCCEEDED, FAILED, ROLLED_BACK
     triggered_by = Column(String(255), default="github_action", nullable=False)
     creator_login = Column(String(255), nullable=True)
     started_at = Column(DateTime(timezone=True), nullable=True)
@@ -99,14 +94,18 @@ class Deployment(Base, TimestampMixin, TenantMixin):
     infrastructure_changes = relationship("InfrastructureChange", back_populates="deployment")
     risk_assessments = relationship("RiskAssessment", back_populates="deployment")
     incidents = relationship("Incident", back_populates="deployment")
-    outcome_label = relationship("DeploymentOutcomeLabel", back_populates="deployment", uselist=False, cascade="all, delete-orphan")
+    outcome_label = relationship(
+        "DeploymentOutcomeLabel", back_populates="deployment", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 class DeploymentOutcomeLabel(Base, TimestampMixin, TenantMixin):
     __tablename__ = "deployment_outcome_labels"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    deployment_id = Column(
+        GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), unique=True, nullable=False, index=True
+    )
     observation_window_minutes = Column(Integer, default=60, nullable=False)
     outcome_label = Column(String(50), nullable=False, index=True)  # FAILED, SUCCEEDED, CENSORED
     failure_reason = Column(Text, nullable=True)

@@ -5,11 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     APP_NAME: str = "Predictive DevOps Intelligence Platform"
     APP_ENV: str = Field(default="development")
@@ -19,12 +15,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
     # Database
-    DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/devops_intelligence"
-    )
-    SYNC_DATABASE_URL: str = Field(
-        default="postgresql+psycopg2://postgres:postgres@localhost:5432/devops_intelligence"
-    )
+    DATABASE_URL: str = Field(default="postgresql+asyncpg://postgres:postgres@localhost:5432/devops_intelligence")
+    SYNC_DATABASE_URL: str = Field(default="postgresql+psycopg2://postgres:postgres@localhost:5432/devops_intelligence")
 
     # Redis Streams
     REDIS_URL: str = Field(default="redis://localhost:6379/0")

@@ -11,12 +11,13 @@ Guarantees:
 - Human-in-the-loop: Authorizes recommendations within the platform; never executes
   destructive production mutations automatically.
 """
+
 from __future__ import annotations
 import uuid
 import hashlib
 import json
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from sqlalchemy import select, and_, or_, desc
@@ -41,21 +42,25 @@ DEFAULT_APPROVAL_TTL_HOURS = 24
 
 class ApprovalError(Exception):
     """Base exception for approval failures."""
+
     pass
 
 
 class UnauthorizedReviewerError(ApprovalError):
     """Raised when an unauthorized user attempts an approval decision."""
+
     pass
 
 
 class ExpiredApprovalError(ApprovalError):
     """Raised when attempting to decide an expired approval request."""
+
     pass
 
 
 class DuplicateDecisionError(ApprovalError):
     """Raised when an approval request has already been finalized."""
+
     pass
 
 
@@ -91,7 +96,9 @@ class AgentApprovalManager:
                 "execution_id": str(execution.id),
                 "environment": execution.environment,
                 "recommendation_title": recommendation.title if recommendation else "Human review required",
-                "risk_category": execution.context_snapshot.get("predictive_intelligence", {}).get("risk_level", "MEDIUM"),
+                "risk_category": execution.context_snapshot.get("predictive_intelligence", {}).get(
+                    "risk_level", "MEDIUM"
+                ),
             },
         )
         db.add(req)
@@ -135,17 +142,23 @@ class AgentApprovalManager:
 
         # 3. Check expiration (fail-closed)
         if req.expires_at:
-            req_exp = req.expires_at if req.expires_at.tzinfo is not None else req.expires_at.replace(tzinfo=timezone.utc)
+            req_exp = (
+                req.expires_at if req.expires_at.tzinfo is not None else req.expires_at.replace(tzinfo=timezone.utc)
+            )
             if req_exp < now:
                 req.status = "EXPIRED"
                 await db.flush()
-                raise ExpiredApprovalError(f"Approval request expired at {req.expires_at.isoformat()}. Action rejected.")
+                raise ExpiredApprovalError(
+                    f"Approval request expired at {req.expires_at.isoformat()}. Action rejected."
+                )
 
         # 4. RBAC Check: User must be an approver, admin, or lead
         allowed_roles = {"approver", "admin", "lead", "owner"}
         user_role = (getattr(user, "role", None) or "approver").lower()
         if user_role not in allowed_roles:
-            raise UnauthorizedReviewerError(f"User '{user.email}' with role '{user_role}' is not authorized to sign off approvals.")
+            raise UnauthorizedReviewerError(
+                f"User '{user.email}' with role '{user_role}' is not authorized to sign off approvals."
+            )
 
         # If assigned to a specific reviewer, verify match or admin
         if req.assigned_reviewer_id and req.assigned_reviewer_id != user.id and user_role != "admin":
@@ -166,7 +179,11 @@ class AgentApprovalManager:
         audit_signature = hashlib.sha256(raw_signature_bytes).hexdigest()
 
         # 6. Map action to status
-        canonical_decision = "APPROVED" if action in (ACTION_APPROVE, "APPROVED") else ("REJECTED" if action in (ACTION_REJECT, "REJECT") else action)
+        canonical_decision = (
+            "APPROVED"
+            if action in (ACTION_APPROVE, "APPROVED")
+            else ("REJECTED" if action in (ACTION_REJECT, "REJECT") else action)
+        )
         target_status = "APPROVED" if canonical_decision == "APPROVED" else "REJECTED"
         if action == ACTION_REQUEST_MORE_INFO:
             target_status = "REQUEST_MORE_INFO"
@@ -196,7 +213,9 @@ class AgentApprovalManager:
                 req.recommendation.status = "REJECTED"
 
         await db.flush()
-        logger.info(f"Recorded decision {action} on Request {req.id} by {user.email}. Signature: {audit_signature[:20]}...")
+        logger.info(
+            f"Recorded decision {action} on Request {req.id} by {user.email}. Signature: {audit_signature[:20]}..."
+        )
         return req, decision_rec
 
 

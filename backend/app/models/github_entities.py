@@ -12,6 +12,7 @@ class PullRequest(Base, TimestampMixin, TenantMixin):
     GitHub Pull Request operational record.
     Correlates branch updates, reviews, and merges with downstream deployments.
     """
+
     __tablename__ = "pull_requests"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
@@ -44,6 +45,7 @@ class WorkflowRun(Base, TimestampMixin, TenantMixin):
     GitHub Actions Workflow Run record.
     Tracks execution status, conclusion, run attempt, duration, and commit SHA.
     """
+
     __tablename__ = "workflow_runs"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
@@ -81,6 +83,7 @@ class WorkflowJob(Base, TimestampMixin, TenantMixin):
     """
     Individual job within a GitHub Actions workflow run.
     """
+
     __tablename__ = "workflow_jobs"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
@@ -96,26 +99,21 @@ class WorkflowJob(Base, TimestampMixin, TenantMixin):
 
     workflow_run = relationship("WorkflowRun", back_populates="jobs")
 
-    __table_args__ = (
-        Index("ix_job_tenant_github_id", "tenant_id", "github_job_id", unique=True),
-    )
+    __table_args__ = (Index("ix_job_tenant_github_id", "tenant_id", "github_job_id", unique=True),)
 
 
 class DeploymentEvent(Base, TimestampMixin, TenantMixin):
     """
     Discrete deployment lifecycle events and status transitions.
     """
+
     __tablename__ = "deployment_events"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False, index=True)
     github_deployment_id = Column(String(100), nullable=True, index=True)
     github_deployment_status_id = Column(String(100), nullable=True, index=True)
-    status = Column(
-        String(50),
-        nullable=False,
-        index=True
-    )  # pending, in_progress, success, failure, error, inactive
+    status = Column(String(50), nullable=False, index=True)  # pending, in_progress, success, failure, error, inactive
     environment = Column(String(100), default="production", nullable=False)
     creator_login = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
@@ -124,6 +122,4 @@ class DeploymentEvent(Base, TimestampMixin, TenantMixin):
 
     deployment = relationship("Deployment", back_populates="events")
 
-    __table_args__ = (
-        Index("ix_dep_event_time", "deployment_id", "occurred_at"),
-    )
+    __table_args__ = (Index("ix_dep_event_time", "deployment_id", "occurred_at"),)

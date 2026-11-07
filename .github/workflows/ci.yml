@@ -59,7 +59,7 @@ jobs:
       - name: Code Formatting & Linting Check
         run: |
           cd backend
-          python -m flake8 app --max-line-length=120 --ignore=E203,W503 --exclude=__pycache__
+          python -m flake8 app --config=.flake8
           python -m black --check --line-length=120 app
 
       - name: Run Alembic migrations against PostgreSQL

@@ -29,7 +29,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
     docs_url=f"{settings.API_V1_PREFIX}/docs",
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS Middleware
@@ -49,7 +49,7 @@ app.add_middleware(ProductionSecurityMiddleware)
 async def devops_exception_handler(request: Request, exc: DevOpsIntelligenceError):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content={"success": False, "message": exc.message, "details": exc.details}
+        content={"success": False, "message": exc.message, "details": exc.details},
     )
 
 

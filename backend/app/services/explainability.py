@@ -5,6 +5,7 @@ Guarantees:
 - Never fabricates SHAP explanations for models that do not exist.
 - When ML is INSUFFICIENT_DATA, provides truthful deterministic feature attribution based on rule activations.
 """
+
 from __future__ import annotations
 import logging
 from typing import Dict, Any, List, Optional
@@ -13,6 +14,7 @@ import numpy as np
 
 try:
     import shap
+
     HAS_SHAP = True
 except ImportError:
     HAS_SHAP = False
@@ -88,13 +90,23 @@ class ExplainabilityEngine:
                     )
                 )
 
-            increasing = sorted([c for c in contributions if c.direction == "INCREASES_RISK"], key=lambda c: c.contribution_score, reverse=True)[:5]
-            mitigating = sorted([c for c in contributions if c.direction == "DECREASES_RISK"], key=lambda c: c.contribution_score)[:5]
+            increasing = sorted(
+                [c for c in contributions if c.direction == "INCREASES_RISK"],
+                key=lambda c: c.contribution_score,
+                reverse=True,
+            )[:5]
+            mitigating = sorted(
+                [c for c in contributions if c.direction == "DECREASES_RISK"], key=lambda c: c.contribution_score
+            )[:5]
 
             return PredictionExplanation(
                 method="SHAP_TREE_EXPLAINER",
                 model_version=model_version,
-                baseline_expected_value=float(explainer.expected_value[1] if hasattr(explainer, "expected_value") and isinstance(explainer.expected_value, (list, np.ndarray)) else 0.20),
+                baseline_expected_value=float(
+                    explainer.expected_value[1]
+                    if hasattr(explainer, "expected_value") and isinstance(explainer.expected_value, (list, np.ndarray))
+                    else 0.20
+                ),
                 top_risk_increasing_factors=increasing,
                 top_risk_mitigating_factors=mitigating,
                 all_contributions=contributions,
@@ -160,8 +172,14 @@ class ExplainabilityEngine:
                 )
             )
 
-        increasing = sorted([c for c in contributions if c.direction == "INCREASES_RISK"], key=lambda c: c.contribution_score, reverse=True)[:5]
-        mitigating = sorted([c for c in contributions if c.direction == "DECREASES_RISK"], key=lambda c: c.contribution_score)[:5]
+        increasing = sorted(
+            [c for c in contributions if c.direction == "INCREASES_RISK"],
+            key=lambda c: c.contribution_score,
+            reverse=True,
+        )[:5]
+        mitigating = sorted(
+            [c for c in contributions if c.direction == "DECREASES_RISK"], key=lambda c: c.contribution_score
+        )[:5]
 
         return PredictionExplanation(
             method="DETERMINISTIC_RULE_ATTRIBUTION",

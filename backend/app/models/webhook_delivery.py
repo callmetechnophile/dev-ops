@@ -11,6 +11,7 @@ class WebhookDelivery(Base, TimestampMixin, TenantMixin):
     Immutable ledger of all inbound webhook deliveries received from GitHub.
     Preserves raw payload and verification status for full traceability.
     """
+
     __tablename__ = "webhook_deliveries"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
@@ -18,10 +19,7 @@ class WebhookDelivery(Base, TimestampMixin, TenantMixin):
     event_type = Column(String(100), nullable=False, index=True)  # push, workflow_run, pull_request, deployment, etc.
     signature = Column(String(255), nullable=True)
     status = Column(
-        String(50),
-        default="RECEIVED",
-        nullable=False,
-        index=True
+        String(50), default="RECEIVED", nullable=False, index=True
     )  # RECEIVED, PUBLISHED, PROCESSED, DUPLICATE_IGNORED, FAILED
     payload = Column(JSON, default=dict, nullable=False)
     error_message = Column(Text, nullable=True)

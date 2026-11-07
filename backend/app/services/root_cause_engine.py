@@ -10,6 +10,7 @@ Guarantees:
 - Never fabricates evidence or confirms hypotheses autonomously.
 - Sanitizes untrusted log and event payloads against prompt injection.
 """
+
 from __future__ import annotations
 import re
 import uuid
@@ -121,7 +122,9 @@ class RootCauseEngine:
                 )
             )
         else:
-            stage_a_results = self._generate_stage_a_hypotheses(incident, classifications, recent_commits, evidence_event_ids)
+            stage_a_results = self._generate_stage_a_hypotheses(
+                incident, classifications, recent_commits, evidence_event_ids
+            )
             candidate_hypotheses.extend(stage_a_results)
 
         # Stage B: LLM-Assisted Synthesis (Provider-agnostic adapter)
@@ -148,7 +151,9 @@ class RootCauseEngine:
                 explanation=cand.explanation,
                 evidence_event_ids=cand.evidence_event_ids,
                 confidence_level=cand.confidence_level,
-                confidence_score=0.9 if cand.confidence_level == "HIGH" else (0.6 if cand.confidence_level == "MEDIUM" else 0.2),
+                confidence_score=(
+                    0.9 if cand.confidence_level == "HIGH" else (0.6 if cand.confidence_level == "MEDIUM" else 0.2)
+                ),
                 status=cand.status,
                 generated_by=cand.generated_by,
                 evidence_summary=f"Supported by {len(cand.evidence_event_ids)} verified operational record(s).",
@@ -177,7 +182,14 @@ class RootCauseEngine:
             if cat == "BUILD_FAILURE":
                 if "Dependency" in sub:
                     # Check if recent commits touched dependencies
-                    pkg_commits = [c for c in recent_commits if any(term in c.message.lower() for term in ("dep", "package", "bump", "npm", "pip", "requirements"))]
+                    pkg_commits = [
+                        c
+                        for c in recent_commits
+                        if any(
+                            term in c.message.lower()
+                            for term in ("dep", "package", "bump", "npm", "pip", "requirements")
+                        )
+                    ]
                     if pkg_commits:
                         results.append(
                             GeneratedHypothesis(

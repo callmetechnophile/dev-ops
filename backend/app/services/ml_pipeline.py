@@ -7,6 +7,7 @@ Enforces:
 - Platt scaling / isotonic probability calibration on validation set.
 - Formal evaluation (Precision, Recall, F1, ROC-AUC, PR-AUC, Brier score).
 """
+
 from __future__ import annotations
 import os
 import uuid
@@ -18,6 +19,7 @@ import numpy as np
 
 try:
     import xgboost as xgb
+
     HAS_XGBOOST = True
 except ImportError:
     HAS_XGBOOST = False
@@ -25,6 +27,7 @@ except ImportError:
 try:
     from sklearn.linear_model import LogisticRegression
     from sklearn.calibration import CalibratedClassifierCV
+
     try:
         from sklearn.frozen import FrozenEstimator
     except ImportError:
@@ -38,6 +41,7 @@ try:
         brier_score_loss,
         confusion_matrix,
     )
+
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -124,13 +128,10 @@ class MLPipelineService:
         db: AsyncSession,
         tenant_id: uuid.UUID,
     ) -> ModelEligibilityStatus:
-        stmt = (
-            select(DeploymentOutcomeLabel.outcome_label)
-            .where(
-                and_(
-                    DeploymentOutcomeLabel.tenant_id == tenant_id,
-                    DeploymentOutcomeLabel.outcome_label.in_([LABEL_FAILED, LABEL_SUCCEEDED]),
-                )
+        stmt = select(DeploymentOutcomeLabel.outcome_label).where(
+            and_(
+                DeploymentOutcomeLabel.tenant_id == tenant_id,
+                DeploymentOutcomeLabel.outcome_label.in_([LABEL_FAILED, LABEL_SUCCEEDED]),
             )
         )
         res = await db.execute(stmt)
@@ -213,8 +214,8 @@ class MLPipelineService:
         n_val = max(1, int(n * 0.15))
 
         X_train, y_train = X[:n_train], y[:n_train]
-        X_val, y_val = X[n_train:n_train + n_val], y[n_train:n_train + n_val]
-        X_test, y_test = X[n_train + n_val:], y[n_train + n_val:]
+        X_val, y_val = X[n_train : n_train + n_val], y[n_train : n_train + n_val]
+        X_test, y_test = X[n_train + n_val :], y[n_train + n_val :]
 
         if len(X_test) == 0:
             X_test, y_test = X_val, y_val
@@ -244,7 +245,9 @@ class MLPipelineService:
             if min_val_class >= 2:
                 cv_folds = max(2, min(5, min_val_class))
                 if FrozenEstimator is not None:
-                    cal = CalibratedClassifierCV(estimator=FrozenEstimator(base_estimator), method="sigmoid", cv=cv_folds)
+                    cal = CalibratedClassifierCV(
+                        estimator=FrozenEstimator(base_estimator), method="sigmoid", cv=cv_folds
+                    )
                 else:
                     cal = CalibratedClassifierCV(estimator=base_estimator, method="sigmoid", cv=cv_folds)
                 cal.fit(X_val, y_val)
@@ -258,7 +261,11 @@ class MLPipelineService:
             calibrated_estimator = base_estimator
 
         # 5. Chronological Evaluation on Test Split
-        y_prob = calibrated_estimator.predict_proba(X_test)[:, 1] if hasattr(calibrated_estimator, "predict_proba") else np.zeros(len(X_test))
+        y_prob = (
+            calibrated_estimator.predict_proba(X_test)[:, 1]
+            if hasattr(calibrated_estimator, "predict_proba")
+            else np.zeros(len(X_test))
+        )
         y_pred = (y_prob >= 0.5).astype(int)
 
         prec = float(precision_score(y_test, y_pred, zero_division=0))

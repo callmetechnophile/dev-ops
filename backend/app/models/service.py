@@ -42,9 +42,7 @@ class Service(Base, TimestampMixin, TenantMixin):
     repository = relationship("Repository", back_populates="services")
     deployments = relationship("Deployment", back_populates="service")
 
-    __table_args__ = (
-        Index("ix_service_tenant_slug", "tenant_id", "slug", unique=True),
-    )
+    __table_args__ = (Index("ix_service_tenant_slug", "tenant_id", "slug", unique=True),)
 
 
 class Environment(Base, TimestampMixin, TenantMixin):
@@ -55,9 +53,7 @@ class Environment(Base, TimestampMixin, TenantMixin):
     slug = Column(String(100), nullable=False)
     is_production = Column(Boolean, default=False, nullable=False)
 
-    __table_args__ = (
-        Index("ix_env_tenant_slug", "tenant_id", "slug", unique=True),
-    )
+    __table_args__ = (Index("ix_env_tenant_slug", "tenant_id", "slug", unique=True),)
 
 
 class ServiceDependency(Base, TimestampMixin, TenantMixin):
@@ -70,6 +66,4 @@ class ServiceDependency(Base, TimestampMixin, TenantMixin):
     criticality = Column(String(50), default="high", nullable=False)  # high, medium, low
     weight = Column(Float, default=1.0, nullable=False)
 
-    __table_args__ = (
-        Index("ix_svc_dep_unique", "tenant_id", "source_service_id", "target_service_id", unique=True),
-    )
+    __table_args__ = (Index("ix_svc_dep_unique", "tenant_id", "source_service_id", "target_service_id", unique=True),)

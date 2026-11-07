@@ -17,7 +17,7 @@ async def list_services(
     health_status: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Service)
     if tier:
@@ -39,17 +39,13 @@ async def list_services(
             description=s.description,
             tier=s.tier,
             health_status=s.health_status,
-            metadata_json=s.metadata_json or {}
+            metadata_json=s.metadata_json or {},
         )
         for s in services
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )
 
 
@@ -73,7 +69,7 @@ async def get_service_dependencies(id: str, db: AsyncSession = Depends(get_db)):
             target_service_id=str(dep.target_service_id),
             dependency_type=dep.dependency_type,
             criticality=dep.criticality,
-            weight=dep.weight
+            weight=dep.weight,
         )
         for dep in dependencies
     ]

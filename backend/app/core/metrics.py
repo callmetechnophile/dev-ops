@@ -5,6 +5,7 @@ Strict Invariant:
 - Unbounded identifiers (commit SHAs, user IDs, deployment IDs, exception strings)
   must NEVER be used as Prometheus labels to avoid cardinality explosion.
 """
+
 from prometheus_client import Counter, Gauge, Histogram
 
 # -------------------------------------------------------------------

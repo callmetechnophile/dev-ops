@@ -18,7 +18,7 @@ async def list_events(
     repository_id: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Event).order_by(Event.occurred_at.desc())
     if source:
@@ -48,15 +48,11 @@ async def list_events(
             received_at=e.received_at,
             correlation_id=e.correlation_id,
             idempotency_key=e.idempotency_key,
-            payload=e.payload or {}
+            payload=e.payload or {},
         )
         for e in events
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )

@@ -7,6 +7,7 @@ Distinguishes:
 - Historical remediation runbook recommendations from verified operational memory.
 - Required human actions and approvals.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -72,7 +73,11 @@ class AgentRecommendationEngine:
                     recommendation_type="BLOCK_DEPLOYMENT",
                     title="Halt Deployment Rollout: Critical Policy or Operational Risk",
                     explanation=f"Deployment is flagged with {risk_level} risk (score: {risk_score:.2f}). Policy evaluation requires delaying deployment until blocking conditions are cleared.",
-                    rationale="; ".join(policy_reasons[:3]) if policy_reasons else "Risk score exceeds maximum allowable enterprise threshold.",
+                    rationale=(
+                        "; ".join(policy_reasons[:3])
+                        if policy_reasons
+                        else "Risk score exceeds maximum allowable enterprise threshold."
+                    ),
                     mitigation_steps=[
                         "Review active P1 incidents and verify root cause resolution.",
                         "Re-run CI test suite to guarantee zero regression.",
@@ -100,7 +105,11 @@ class AgentRecommendationEngine:
                     recommendation_type="REQUIRE_CONFIG_REVIEW",
                     title="Mandatory SRE Sign-off: High-Impact / Production Surface",
                     explanation="Deployment affects production environment or core service dependencies. SRE verification is required prior to traffic routing.",
-                    rationale="; ".join(policy_reasons[:2]) if policy_reasons else "High blast radius and Tier-1 service dependency exposure.",
+                    rationale=(
+                        "; ".join(policy_reasons[:2])
+                        if policy_reasons
+                        else "High blast radius and Tier-1 service dependency exposure."
+                    ),
                     mitigation_steps=[
                         "Verify database migration backwards-compatibility.",
                         "Inspect container resource requests and limits.",

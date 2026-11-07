@@ -16,16 +16,9 @@ router = APIRouter(prefix="/repositories", tags=["Repositories"])
 
 @router.get("", response_model=PaginatedResponse[RepositoryRead])
 async def list_repositories(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), db: AsyncSession = Depends(get_db)
 ):
-    stmt = (
-        select(Repository)
-        .order_by(Repository.full_name.asc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    stmt = select(Repository).order_by(Repository.full_name.asc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     repos = result.scalars().all()
 
@@ -42,17 +35,13 @@ async def list_repositories(
             clone_url=r.clone_url,
             html_url=r.html_url,
             is_private=r.is_private,
-            created_at=r.created_at
+            created_at=r.created_at,
         )
         for r in repos
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )
 
 
@@ -82,7 +71,7 @@ async def get_repository(id: str, db: AsyncSession = Depends(get_db)):
         clone_url=r.clone_url,
         html_url=r.html_url,
         is_private=r.is_private,
-        created_at=r.created_at
+        created_at=r.created_at,
     )
 
 
@@ -92,7 +81,7 @@ async def list_repository_commits(
     branch: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         repo_uuid = uuid.UUID(id)
@@ -121,26 +110,19 @@ async def list_repository_commits(
             html_url=c.html_url,
             stats_additions=c.stats_additions,
             stats_deletions=c.stats_deletions,
-            committed_at=c.committed_at
+            committed_at=c.committed_at,
         )
         for c in commits
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )
 
 
 @router.get("/{id}/workflows", response_model=PaginatedResponse[WorkflowRunRead])
 async def list_repository_workflows(
-    id: str,
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    id: str, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), db: AsyncSession = Depends(get_db)
 ):
     try:
         repo_uuid = uuid.UUID(id)
@@ -176,15 +158,11 @@ async def list_repository_workflows(
             started_at=w.started_at,
             completed_at=w.completed_at,
             html_url=w.html_url,
-            jobs=[]
+            jobs=[],
         )
         for w in runs
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )

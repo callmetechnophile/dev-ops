@@ -20,13 +20,9 @@ async def list_workflows(
     conclusion: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    stmt = (
-        select(WorkflowRun)
-        .options(selectinload(WorkflowRun.jobs))
-        .order_by(WorkflowRun.started_at.desc())
-    )
+    stmt = select(WorkflowRun).options(selectinload(WorkflowRun.jobs)).order_by(WorkflowRun.started_at.desc())
     if repository_id:
         stmt = stmt.where(WorkflowRun.repository_id == uuid.UUID(repository_id))
     if status_filter:
@@ -67,20 +63,16 @@ async def list_workflows(
                     conclusion=j.conclusion,
                     started_at=j.started_at,
                     completed_at=j.completed_at,
-                    runner_name=j.runner_name
+                    runner_name=j.runner_name,
                 )
                 for j in w.jobs
-            ]
+            ],
         )
         for w in runs
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )
 
 
@@ -126,10 +118,10 @@ async def get_workflow(id: str, db: AsyncSession = Depends(get_db)):
                 conclusion=j.conclusion,
                 started_at=j.started_at,
                 completed_at=j.completed_at,
-                runner_name=j.runner_name
+                runner_name=j.runner_name,
             )
             for j in w.jobs
-        ]
+        ],
     )
 
 
@@ -139,7 +131,7 @@ async def list_builds(
     status_filter: Optional[str] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Build).order_by(Build.created_at.desc())
     if repository_id:
@@ -164,17 +156,13 @@ async def list_builds(
             tests_passed=b.tests_passed,
             tests_failed=b.tests_failed,
             logs_summary=b.logs_summary,
-            created_at=b.created_at
+            created_at=b.created_at,
         )
         for b in builds
     ]
 
     return PaginatedResponse(
-        items=items,
-        total=len(items),
-        page=page,
-        page_size=page_size,
-        has_more=len(items) == page_size
+        items=items, total=len(items), page=page, page_size=page_size, has_more=len(items) == page_size
     )
 
 
@@ -204,5 +192,5 @@ async def get_build(id: str, db: AsyncSession = Depends(get_db)):
         tests_passed=b.tests_passed,
         tests_failed=b.tests_failed,
         logs_summary=b.logs_summary,
-        created_at=b.created_at
+        created_at=b.created_at,
     )

@@ -15,6 +15,7 @@ Invariants:
 - Never infers failure from incomplete telemetry.
 - Persists verifiable observations in `outcome_observations`.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -93,7 +94,10 @@ class AgentOutcomeMonitor:
                 deployment_id=dep.id,
                 observation_type="DEPLOYMENT_STATUS",
                 observation_value=OBS_FAILURE if dep_status == "FAILED" else OBS_ROLLBACK,
-                evidence_reference={"status": dep_status, "finished_at": dep.finished_at.isoformat() if dep.finished_at else None},
+                evidence_reference={
+                    "status": dep_status,
+                    "finished_at": dep.finished_at.isoformat() if dep.finished_at else None,
+                },
                 observed_at=now,
             )
             db.add(obs)
@@ -177,7 +181,9 @@ class AgentOutcomeMonitor:
                 elif dep_status == "SUCCEEDED":
                     overall_outcome = OBS_SUCCESS
                     is_verified = True
-                    summary = f"Deployment verified successful after full {observation_window_minutes}m observation window."
+                    summary = (
+                        f"Deployment verified successful after full {observation_window_minutes}m observation window."
+                    )
                     obs = OutcomeObservation(
                         id=uuid.uuid4(),
                         tenant_id=execution.tenant_id,
@@ -185,7 +191,10 @@ class AgentOutcomeMonitor:
                         deployment_id=dep.id,
                         observation_type="DEPLOYMENT_STATUS",
                         observation_value=OBS_SUCCESS,
-                        evidence_reference={"observation_window_minutes": observation_window_minutes, "status": dep_status},
+                        evidence_reference={
+                            "observation_window_minutes": observation_window_minutes,
+                            "status": dep_status,
+                        },
                         observed_at=now,
                     )
                     db.add(obs)

@@ -12,6 +12,7 @@ Guarantees:
 - Distinguishes unavailable telemetry from negative evidence.
 - Zero fabrication of missing signals.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -120,13 +121,10 @@ class AgentContextCollector:
             missing_context.append("commit_details_and_diff")
 
         # Fetch Linked Pull Request
-        pr_stmt = (
-            select(PullRequest)
-            .where(
-                and_(
-                    PullRequest.tenant_id == tenant_id,
-                    PullRequest.head_sha == deployment.commit_sha,
-                )
+        pr_stmt = select(PullRequest).where(
+            and_(
+                PullRequest.tenant_id == tenant_id,
+                PullRequest.head_sha == deployment.commit_sha,
             )
         )
         pr_res = await db.execute(pr_stmt)
@@ -149,7 +147,11 @@ class AgentContextCollector:
             b_res = await db.execute(b_stmt)
             build_rec = b_res.scalar_one_or_none()
         elif repo:
-            b_stmt = select(Build).where(and_(Build.commit_sha == deployment.commit_sha, Build.repository_id == repo.id)).order_by(desc(Build.created_at))
+            b_stmt = (
+                select(Build)
+                .where(and_(Build.commit_sha == deployment.commit_sha, Build.repository_id == repo.id))
+                .order_by(desc(Build.created_at))
+            )
             b_res = await db.execute(b_stmt)
             build_rec = b_res.scalars().first()
 
@@ -184,14 +186,16 @@ class AgentContextCollector:
             inc_res = await db.execute(inc_stmt)
             recent_incs = inc_res.scalars().all()
             for inc in recent_incs:
-                op_memory["similar_incidents"].append({
-                    "id": str(inc.id),
-                    "key": inc.incident_key,
-                    "title": inc.title,
-                    "severity": inc.severity,
-                    "status": inc.status,
-                    "detected_at": inc.detected_at.isoformat(),
-                })
+                op_memory["similar_incidents"].append(
+                    {
+                        "id": str(inc.id),
+                        "key": inc.incident_key,
+                        "title": inc.title,
+                        "severity": inc.severity,
+                        "status": inc.status,
+                        "detected_at": inc.detected_at.isoformat(),
+                    }
+                )
             sources["operational_incidents"] = f"incidents.count:{len(recent_incs)}"
 
             # Confirmed root causes & lessons
@@ -204,11 +208,13 @@ class AgentContextCollector:
                 )
                 crc_res = await db.execute(crc_stmt)
                 for crc in crc_res.scalars().all():
-                    op_memory["confirmed_root_causes"].append({
-                        "incident_id": str(crc.incident_id),
-                        "summary": crc.root_cause_summary,
-                        "prevention": crc.prevention_strategy,
-                    })
+                    op_memory["confirmed_root_causes"].append(
+                        {
+                            "incident_id": str(crc.incident_id),
+                            "summary": crc.root_cause_summary,
+                            "prevention": crc.prevention_strategy,
+                        }
+                    )
 
                 lesson_stmt = select(OperationalLesson).where(
                     and_(
@@ -218,10 +224,12 @@ class AgentContextCollector:
                 )
                 lesson_res = await db.execute(lesson_stmt)
                 for lsn in lesson_res.scalars().all():
-                    op_memory["verified_lessons"].append({
-                        "title": lsn.title,
-                        "lesson": lsn.lesson,
-                    })
+                    op_memory["verified_lessons"].append(
+                        {
+                            "title": lsn.title,
+                            "lesson": lsn.lesson,
+                        }
+                    )
 
         # ----------------------------------------------------
         # 3. Infrastructure & Topology Context
@@ -245,18 +253,22 @@ class AgentContextCollector:
             for d in all_deps:
                 if d.target_service_id == service.id:
                     # Someone depends on this service (downstream affected if this fails)
-                    infra_context["downstream_dependencies"].append({
-                        "service_id": str(d.source_service_id),
-                        "type": d.dependency_type,
-                        "criticality": d.criticality,
-                    })
+                    infra_context["downstream_dependencies"].append(
+                        {
+                            "service_id": str(d.source_service_id),
+                            "type": d.dependency_type,
+                            "criticality": d.criticality,
+                        }
+                    )
                 elif d.source_service_id == service.id:
                     # This service depends on someone (upstream dependency)
-                    infra_context["upstream_dependencies"].append({
-                        "service_id": str(d.target_service_id),
-                        "type": d.dependency_type,
-                        "criticality": d.criticality,
-                    })
+                    infra_context["upstream_dependencies"].append(
+                        {
+                            "service_id": str(d.target_service_id),
+                            "type": d.dependency_type,
+                            "criticality": d.criticality,
+                        }
+                    )
 
             sources["dependencies"] = f"dependencies.count:{len(all_deps)}"
         else:

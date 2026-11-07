@@ -7,6 +7,7 @@ Enforces:
 - Versioned schema (v1.0.0).
 - Reproducible feature representation.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -27,18 +28,31 @@ logger = logging.getLogger(__name__)
 FEATURE_SCHEMA_VERSION = "1.0.0"
 
 DEPENDENCY_MANIFEST_NAMES = {
-    "package.json", "package-lock.json", "requirements.txt", "pyproject.toml",
-    "pipfile", "go.mod", "go.sum", "cargo.toml", "pom.xml", "build.gradle"
+    "package.json",
+    "package-lock.json",
+    "requirements.txt",
+    "pyproject.toml",
+    "pipfile",
+    "go.mod",
+    "go.sum",
+    "cargo.toml",
+    "pom.xml",
+    "build.gradle",
 }
 
 INFRASTRUCTURE_PATTERNS = {
-    "dockerfile", "docker-compose", "helm", "k8s", "kubernetes", "values.yaml",
-    "deployment.yaml", "terraform", ".tf"
+    "dockerfile",
+    "docker-compose",
+    "helm",
+    "k8s",
+    "kubernetes",
+    "values.yaml",
+    "deployment.yaml",
+    "terraform",
+    ".tf",
 }
 
-CONFIG_PATTERNS = {
-    ".env", "config.json", "config.yaml", "settings.py", "application.yml"
-}
+CONFIG_PATTERNS = {".env", "config.json", "config.yaml", "settings.py", "application.yml"}
 
 
 class FeatureSnapshot(BaseModel):
@@ -166,9 +180,7 @@ class FeatureEngineeringService:
         # Check workflow runs for failed jobs or dependency errors
         if commit_sha:
             wf_stmt = (
-                select(WorkflowRun)
-                .where(WorkflowRun.head_sha == commit_sha)
-                .options(selectinload(WorkflowRun.jobs))
+                select(WorkflowRun).where(WorkflowRun.head_sha == commit_sha).options(selectinload(WorkflowRun.jobs))
             )
             wf_res = await db.execute(wf_stmt)
             wf_runs = wf_res.scalars().all()
@@ -187,7 +199,6 @@ class FeatureEngineeringService:
         # ----------------------------------------------------
         # 3. Repository Historical Risk Features
         # ----------------------------------------------------
-        repo_build_failure_rate = 0.0
         repo_dep_failure_rate = 0.0
         repo_recent_incidents_30d = 0.0
         repo_unresolved_incidents = 0.0

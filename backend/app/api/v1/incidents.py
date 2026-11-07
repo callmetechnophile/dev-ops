@@ -112,17 +112,23 @@ def _map_incident_to_read(inc: Incident) -> IncidentRead:
             )
             for h in (inc.hypotheses or [])
         ],
-        confirmed_root_cause=ConfirmedRootCauseRead(
-            id=str(inc.confirmed_root_cause.id),
-            incident_id=str(inc.confirmed_root_cause.incident_id),
-            hypothesis_id=str(inc.confirmed_root_cause.hypothesis_id) if inc.confirmed_root_cause.hypothesis_id else None,
-            confirmed_by=inc.confirmed_root_cause.confirmed_by or "authorized_engineer",
-            confirmation_notes=inc.confirmed_root_cause.confirmation_notes or "",
-            root_cause_summary=inc.confirmed_root_cause.root_cause_summary,
-            verified_engineering_lesson=inc.confirmed_root_cause.verified_engineering_lesson,
-            prevention_strategy=inc.confirmed_root_cause.prevention_strategy,
-            confirmed_at=inc.confirmed_root_cause.confirmed_at,
-        ) if inc.confirmed_root_cause else None,
+        confirmed_root_cause=(
+            ConfirmedRootCauseRead(
+                id=str(inc.confirmed_root_cause.id),
+                incident_id=str(inc.confirmed_root_cause.incident_id),
+                hypothesis_id=(
+                    str(inc.confirmed_root_cause.hypothesis_id) if inc.confirmed_root_cause.hypothesis_id else None
+                ),
+                confirmed_by=inc.confirmed_root_cause.confirmed_by or "authorized_engineer",
+                confirmation_notes=inc.confirmed_root_cause.confirmation_notes or "",
+                root_cause_summary=inc.confirmed_root_cause.root_cause_summary,
+                verified_engineering_lesson=inc.confirmed_root_cause.verified_engineering_lesson,
+                prevention_strategy=inc.confirmed_root_cause.prevention_strategy,
+                confirmed_at=inc.confirmed_root_cause.confirmed_at,
+            )
+            if inc.confirmed_root_cause
+            else None
+        ),
         remediations=[
             RemediationActionRead(
                 id=str(r.id),
@@ -162,11 +168,7 @@ async def get_incident_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     """Calculates comprehensive failure and incident metrics from real stored records."""
-    stmt = (
-        select(Incident)
-        .where(Incident.tenant_id == tenant_id)
-        .options(selectinload(Incident.classifications))
-    )
+    stmt = select(Incident).where(Incident.tenant_id == tenant_id).options(selectinload(Incident.classifications))
     res = await db.execute(stmt)
     incidents = res.scalars().all()
 
@@ -506,12 +508,16 @@ async def list_incident_remediations(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid incident UUID")
 
-    stmt = select(RemediationAction).where(
-        and_(
-            RemediationAction.incident_id == inc_uuid,
-            RemediationAction.tenant_id == tenant_id,
+    stmt = (
+        select(RemediationAction)
+        .where(
+            and_(
+                RemediationAction.incident_id == inc_uuid,
+                RemediationAction.tenant_id == tenant_id,
+            )
         )
-    ).order_by(RemediationAction.created_at.desc())
+        .order_by(RemediationAction.created_at.desc())
+    )
     res = await db.execute(stmt)
     rems = res.scalars().all()
     return [

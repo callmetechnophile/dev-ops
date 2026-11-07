@@ -24,6 +24,7 @@ Invariants:
 - Strict transition validation enforced by `agent_state_machine`.
 - Resilient retry handling and audit trails.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -33,7 +34,13 @@ from sqlalchemy import select, and_, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.agent import AgentExecution, AgentStateTransition, DeploymentPolicy, PolicyEvaluation, OutcomeObservation
+from app.models.agent import (
+    AgentExecution,
+    AgentStateTransition,
+    DeploymentPolicy,
+    PolicyEvaluation,
+    OutcomeObservation,
+)
 from app.models.deployment import Deployment
 from app.models.governance import ApprovalRequest, ApprovalDecision
 from app.models.organization import User
@@ -57,7 +64,13 @@ from app.services.agent_state_machine import (
     STATE_FAILED,
 )
 from app.services.agent_context_collector import agent_context_collector, CollectedContext
-from app.services.agent_policy_engine import agent_policy_engine, OUTCOME_ALLOW, OUTCOME_REQUIRE_APPROVAL, OUTCOME_REQUIRE_ADDITIONAL_REVIEW, OUTCOME_RECOMMEND_DELAY
+from app.services.agent_policy_engine import (
+    agent_policy_engine,
+    OUTCOME_ALLOW,
+    OUTCOME_REQUIRE_APPROVAL,
+    OUTCOME_REQUIRE_ADDITIONAL_REVIEW,
+    OUTCOME_RECOMMEND_DELAY,
+)
 from app.services.agent_recommendation_engine import agent_recommendation_engine
 from app.services.agent_approval_manager import agent_approval_manager
 from app.services.agent_outcome_monitor import agent_outcome_monitor
@@ -175,6 +188,7 @@ class AgentOrchestrator:
 
             # Fetch the persisted RiskAssessment model
             from app.models.intelligence import RiskAssessment
+
             ra_stmt = select(RiskAssessment).where(RiskAssessment.id == uuid.UUID(ra_res.id))
             ra_obj_res = await db.execute(ra_stmt)
             risk_record = ra_obj_res.scalar_one()
@@ -313,7 +327,11 @@ class AgentOrchestrator:
                 next_state=STATE_APPROVED,
                 reason=f"Approved by authorized reviewer {user.email}: {notes}",
                 triggered_by="HUMAN_APPROVER",
-                payload={"decision_id": str(decision.id), "reviewer": user.email, "signature": decision.audit_signature},
+                payload={
+                    "decision_id": str(decision.id),
+                    "reviewer": user.email,
+                    "signature": decision.audit_signature,
+                },
             )
             # Advance APPROVED -> POST_DEPLOYMENT_MONITORING
             await agent_state_machine.transition(

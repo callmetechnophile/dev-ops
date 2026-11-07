@@ -22,6 +22,4 @@ class ModelVersion(Base, TimestampMixin, TenantMixin):
     artifact_path = Column(String(512), nullable=True)
     trained_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    __table_args__ = (
-        Index("ix_model_version_tenant_name", "tenant_id", "model_name", "version", unique=True),
-    )
+    __table_args__ = (Index("ix_model_version_tenant_name", "tenant_id", "model_name", "version", unique=True),)

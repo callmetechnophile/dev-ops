@@ -8,6 +8,7 @@ Invariants:
 - Stores predictions separately from actual outcomes to enable model drift and calibration evaluation.
 - Promotes confirmed incident root causes into verified operational lessons when verified outcomes are observed.
 """
+
 from __future__ import annotations
 import uuid
 import logging
@@ -49,7 +50,6 @@ class AgentMemoryUpdater:
         outcome_value: str,  # SUCCESS, FAILURE, ROLLBACK, INCIDENT, CENSORED, UNKNOWN
         evidence: Dict[str, Any],
     ) -> LineageAuditReport:
-        now = datetime.now(timezone.utc)
         verified_lesson_ids: List[str] = []
 
         # 1. Fetch deployment
@@ -62,12 +62,16 @@ class AgentMemoryUpdater:
         # 2. Fetch risk assessment (Preserve unaltered!)
         ra = None
         if dep:
-            ra_stmt = select(RiskAssessment).where(
-                and_(
-                    RiskAssessment.deployment_id == dep.id,
-                    RiskAssessment.tenant_id == execution.tenant_id,
+            ra_stmt = (
+                select(RiskAssessment)
+                .where(
+                    and_(
+                        RiskAssessment.deployment_id == dep.id,
+                        RiskAssessment.tenant_id == execution.tenant_id,
+                    )
                 )
-            ).order_by(desc(RiskAssessment.assessed_at))
+                .order_by(desc(RiskAssessment.assessed_at))
+            )
             ra_res = await db.execute(ra_stmt)
             ra = ra_res.scalars().first()
 
@@ -107,12 +111,16 @@ class AgentMemoryUpdater:
                     logger.info(f"Synthesized new Verified OperationalLesson {new_lesson.id} from Incident {inc.id}")
 
         # 4. Fetch approval request and decision
-        ar_stmt = select(ApprovalRequest).where(
-            and_(
-                ApprovalRequest.execution_id == execution.id,
-                ApprovalRequest.tenant_id == execution.tenant_id,
+        ar_stmt = (
+            select(ApprovalRequest)
+            .where(
+                and_(
+                    ApprovalRequest.execution_id == execution.id,
+                    ApprovalRequest.tenant_id == execution.tenant_id,
+                )
             )
-        ).options(selectinload(ApprovalRequest.decisions))
+            .options(selectinload(ApprovalRequest.decisions))
+        )
         ar_res = await db.execute(ar_stmt)
         app_req = ar_res.scalars().first()
 

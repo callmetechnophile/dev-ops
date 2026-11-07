@@ -28,18 +28,9 @@ class CorrelationEngine:
     """
 
     async def get_or_create_repository(
-        self,
-        db: AsyncSession,
-        tenant_id: uuid.UUID,
-        repo_full_name: str,
-        repo_data: Optional[Dict[str, Any]] = None
+        self, db: AsyncSession, tenant_id: uuid.UUID, repo_full_name: str, repo_data: Optional[Dict[str, Any]] = None
     ) -> Repository:
-        stmt = select(Repository).where(
-            and_(
-                Repository.tenant_id == tenant_id,
-                Repository.full_name == repo_full_name
-            )
-        )
+        stmt = select(Repository).where(and_(Repository.tenant_id == tenant_id, Repository.full_name == repo_full_name))
         result = await db.execute(stmt)
         repo = result.scalar_one_or_none()
 
@@ -61,18 +52,13 @@ class CorrelationEngine:
                 provider="github",
                 default_branch=(repo_data.get("default_branch") if repo_data else "main") or "main",
                 html_url=html_url,
-                is_private=(repo_data.get("private") if repo_data else False) or False
+                is_private=(repo_data.get("private") if repo_data else False) or False,
             )
             db.add(repo)
             await db.flush()
 
             # Ensure default service for repository
-            svc_stmt = select(Service).where(
-                and_(
-                    Service.tenant_id == tenant_id,
-                    Service.slug == repo_name.lower()
-                )
-            )
+            svc_stmt = select(Service).where(and_(Service.tenant_id == tenant_id, Service.slug == repo_name.lower()))
             svc_res = await db.execute(svc_stmt)
             service = svc_res.scalar_one_or_none()
             if not service:
@@ -84,7 +70,7 @@ class CorrelationEngine:
                     slug=repo_name.lower(),
                     tier="tier-2",
                     health_status="healthy",
-                    metadata_json={"source": "github_auto_discovered"}
+                    metadata_json={"source": "github_auto_discovered"},
                 )
                 db.add(service)
                 await db.flush()
@@ -92,17 +78,11 @@ class CorrelationEngine:
         return repo
 
     async def process_push_event(
-        self,
-        db: AsyncSession,
-        tenant_id: uuid.UUID,
-        event: PushEvent
+        self, db: AsyncSession, tenant_id: uuid.UUID, event: PushEvent
     ) -> Tuple[Optional[Commit], int]:
         """Correlates commits and files modified from push event."""
         repo = await self.get_or_create_repository(
-            db,
-            tenant_id,
-            event.repository_full_name,
-            event.raw_payload.get("repository")
+            db, tenant_id, event.repository_full_name, event.raw_payload.get("repository")
         )
 
         commits_added = 0
@@ -111,11 +91,7 @@ class CorrelationEngine:
         for c_info in event.commits:
             # Idempotent commit check
             stmt = select(Commit).where(
-                and_(
-                    Commit.tenant_id == tenant_id,
-                    Commit.repository_id == repo.id,
-                    Commit.commit_sha == c_info.id
-                )
+                and_(Commit.tenant_id == tenant_id, Commit.repository_id == repo.id, Commit.commit_sha == c_info.id)
             )
             res = await db.execute(stmt)
             commit = res.scalar_one_or_none()
@@ -135,7 +111,7 @@ class CorrelationEngine:
                     html_url=f"{repo.html_url}/commit/{c_info.id}" if repo.html_url else None,
                     stats_additions=len(c_info.added),
                     stats_deletions=len(c_info.removed),
-                    committed_at=c_info.timestamp or datetime.now(timezone.utc)
+                    committed_at=c_info.timestamp or datetime.now(timezone.utc),
                 )
                 db.add(commit)
                 await db.flush()
@@ -143,29 +119,35 @@ class CorrelationEngine:
 
                 # Record file changes
                 for fpath in c_info.added:
-                    db.add(Change(
-                        id=uuid.uuid4(),
-                        tenant_id=tenant_id,
-                        commit_id=commit.id,
-                        file_path=fpath,
-                        change_type="added"
-                    ))
+                    db.add(
+                        Change(
+                            id=uuid.uuid4(),
+                            tenant_id=tenant_id,
+                            commit_id=commit.id,
+                            file_path=fpath,
+                            change_type="added",
+                        )
+                    )
                 for fpath in c_info.modified:
-                    db.add(Change(
-                        id=uuid.uuid4(),
-                        tenant_id=tenant_id,
-                        commit_id=commit.id,
-                        file_path=fpath,
-                        change_type="modified"
-                    ))
+                    db.add(
+                        Change(
+                            id=uuid.uuid4(),
+                            tenant_id=tenant_id,
+                            commit_id=commit.id,
+                            file_path=fpath,
+                            change_type="modified",
+                        )
+                    )
                 for fpath in c_info.removed:
-                    db.add(Change(
-                        id=uuid.uuid4(),
-                        tenant_id=tenant_id,
-                        commit_id=commit.id,
-                        file_path=fpath,
-                        change_type="deleted"
-                    ))
+                    db.add(
+                        Change(
+                            id=uuid.uuid4(),
+                            tenant_id=tenant_id,
+                            commit_id=commit.id,
+                            file_path=fpath,
+                            change_type="deleted",
+                        )
+                    )
 
             if event.after and c_info.id == event.after:
                 head_commit_obj = commit
@@ -174,24 +156,18 @@ class CorrelationEngine:
         return head_commit_obj, commits_added
 
     async def process_pull_request_event(
-        self,
-        db: AsyncSession,
-        tenant_id: uuid.UUID,
-        event: PullRequestEvent
+        self, db: AsyncSession, tenant_id: uuid.UUID, event: PullRequestEvent
     ) -> PullRequest:
         """Correlates PR opened, closed, merged with repository and head commit."""
         repo = await self.get_or_create_repository(
-            db,
-            tenant_id,
-            event.repository_full_name,
-            event.raw_payload.get("repository")
+            db, tenant_id, event.repository_full_name, event.raw_payload.get("repository")
         )
 
         stmt = select(PullRequest).where(
             and_(
                 PullRequest.tenant_id == tenant_id,
                 PullRequest.repository_id == repo.id,
-                PullRequest.number == event.number
+                PullRequest.number == event.number,
             )
         )
         res = await db.execute(stmt)
@@ -215,7 +191,7 @@ class CorrelationEngine:
                 html_url=event.html_url,
                 changed_files_count=event.changed_files,
                 additions=event.additions,
-                deletions=event.deletions
+                deletions=event.deletions,
             )
             db.add(pr)
         else:
@@ -232,17 +208,11 @@ class CorrelationEngine:
         return pr
 
     async def process_workflow_run_event(
-        self,
-        db: AsyncSession,
-        tenant_id: uuid.UUID,
-        event: WorkflowRunEvent
+        self, db: AsyncSession, tenant_id: uuid.UUID, event: WorkflowRunEvent
     ) -> WorkflowRun:
         """Correlates workflow execution to repository, commit, and build history."""
         repo = await self.get_or_create_repository(
-            db,
-            tenant_id,
-            event.repository_full_name,
-            event.raw_payload.get("repository")
+            db, tenant_id, event.repository_full_name, event.raw_payload.get("repository")
         )
 
         # Correlate commit if exists
@@ -250,9 +220,7 @@ class CorrelationEngine:
         if event.head_sha:
             c_stmt = select(Commit).where(
                 and_(
-                    Commit.tenant_id == tenant_id,
-                    Commit.repository_id == repo.id,
-                    Commit.commit_sha == event.head_sha
+                    Commit.tenant_id == tenant_id, Commit.repository_id == repo.id, Commit.commit_sha == event.head_sha
                 )
             )
             c_res = await db.execute(c_stmt)
@@ -262,10 +230,7 @@ class CorrelationEngine:
 
         # Idempotent lookup for workflow run
         stmt = select(WorkflowRun).where(
-            and_(
-                WorkflowRun.tenant_id == tenant_id,
-                WorkflowRun.github_run_id == event.run_id
-            )
+            and_(WorkflowRun.tenant_id == tenant_id, WorkflowRun.github_run_id == event.run_id)
         )
         res = await db.execute(stmt)
         run = res.scalar_one_or_none()
@@ -289,7 +254,7 @@ class CorrelationEngine:
                 duration_seconds=event.duration_seconds,
                 started_at=event.started_at,
                 completed_at=event.completed_at,
-                html_url=event.html_url
+                html_url=event.html_url,
             )
             db.add(run)
         else:
@@ -310,7 +275,7 @@ class CorrelationEngine:
                     Build.tenant_id == tenant_id,
                     Build.repository_id == repo.id,
                     Build.commit_sha == event.head_sha,
-                    Build.build_number == event.run_number
+                    Build.build_number == event.run_number,
                 )
             )
             b_res = await db.execute(b_stmt)
@@ -328,7 +293,7 @@ class CorrelationEngine:
                     status=build_status,
                     duration_seconds=event.duration_seconds,
                     logs_summary=f"GitHub Actions run '{event.name}' conclusion: {event.conclusion}",
-                    metadata_json={"run_id": event.run_id, "attempt": event.run_attempt}
+                    metadata_json={"run_id": event.run_id, "attempt": event.run_attempt},
                 )
                 db.add(build)
             else:
@@ -341,17 +306,11 @@ class CorrelationEngine:
         return run
 
     async def process_workflow_job_event(
-        self,
-        db: AsyncSession,
-        tenant_id: uuid.UUID,
-        event: WorkflowJobEvent
+        self, db: AsyncSession, tenant_id: uuid.UUID, event: WorkflowJobEvent
     ) -> Optional[WorkflowJob]:
         """Correlates individual workflow job execution to parent workflow run."""
         r_stmt = select(WorkflowRun).where(
-            and_(
-                WorkflowRun.tenant_id == tenant_id,
-                WorkflowRun.github_run_id == event.run_id
-            )
+            and_(WorkflowRun.tenant_id == tenant_id, WorkflowRun.github_run_id == event.run_id)
         )
         r_res = await db.execute(r_stmt)
         run = r_res.scalar_one_or_none()
@@ -360,10 +319,7 @@ class CorrelationEngine:
             return None
 
         j_stmt = select(WorkflowJob).where(
-            and_(
-                WorkflowJob.tenant_id == tenant_id,
-                WorkflowJob.github_job_id == event.job_id
-            )
+            and_(WorkflowJob.tenant_id == tenant_id, WorkflowJob.github_job_id == event.job_id)
         )
         j_res = await db.execute(j_stmt)
         job = j_res.scalar_one_or_none()
@@ -380,7 +336,7 @@ class CorrelationEngine:
                 started_at=event.started_at,
                 completed_at=event.completed_at,
                 runner_name=event.runner_name,
-                steps_summary=event.steps
+                steps_summary=event.steps,
             )
             db.add(job)
         else:
@@ -393,29 +349,18 @@ class CorrelationEngine:
         return job
 
     async def process_deployment_event(
-        self,
-        db: AsyncSession,
-        tenant_id: uuid.UUID,
-        event: DeploymentEventSchema
+        self, db: AsyncSession, tenant_id: uuid.UUID, event: DeploymentEventSchema
     ) -> Deployment:
         """
         Correlates actual deployment lifecycle event to repository, service, and timeline.
         Mandate: Deployments are strictly created from verified deployment events.
         """
         repo = await self.get_or_create_repository(
-            db,
-            tenant_id,
-            event.repository_full_name,
-            event.raw_payload.get("repository")
+            db, tenant_id, event.repository_full_name, event.raw_payload.get("repository")
         )
 
         # Find service associated with repository
-        s_stmt = select(Service).where(
-            and_(
-                Service.tenant_id == tenant_id,
-                Service.repository_id == repo.id
-            )
-        )
+        s_stmt = select(Service).where(and_(Service.tenant_id == tenant_id, Service.repository_id == repo.id))
         s_res = await db.execute(s_stmt)
         service = s_res.scalar_one_or_none()
         if not service:
@@ -428,17 +373,14 @@ class CorrelationEngine:
                 slug=repo.name.lower(),
                 tier="tier-2",
                 health_status="healthy",
-                metadata_json={"source": "deployment_correlation"}
+                metadata_json={"source": "deployment_correlation"},
             )
             db.add(service)
             await db.flush()
 
         # Idempotent lookup by github_deployment_id
         d_stmt = select(Deployment).where(
-            and_(
-                Deployment.tenant_id == tenant_id,
-                Deployment.github_deployment_id == event.deployment_id
-            )
+            and_(Deployment.tenant_id == tenant_id, Deployment.github_deployment_id == event.deployment_id)
         )
         d_res = await db.execute(d_stmt)
         deployment = d_res.scalar_one_or_none()
@@ -449,7 +391,7 @@ class CorrelationEngine:
             "error": "FAILED",
             "in_progress": "IN_PROGRESS",
             "pending": "PENDING",
-            "queued": "PENDING"
+            "queued": "PENDING",
         }
         mapped_status = dep_status_map.get(event.state.lower(), "PENDING")
 
@@ -465,7 +407,7 @@ class CorrelationEngine:
                 triggered_by=f"github_deployment:{event.creator_login or 'unknown'}",
                 creator_login=event.creator_login,
                 started_at=event.occurred_at,
-                metadata_json=event.raw_payload
+                metadata_json=event.raw_payload,
             )
             db.add(deployment)
             await db.flush()
@@ -488,7 +430,7 @@ class CorrelationEngine:
             creator_login=event.creator_login,
             description=event.description,
             occurred_at=event.occurred_at,
-            payload=event.raw_payload
+            payload=event.raw_payload,
         )
         db.add(dep_event)
         await db.flush()

@@ -18,21 +18,23 @@ async def ingest_event(db: AsyncSession, contract: NormalizedEventContract) -> T
     """
     # 1. Deduplication check via tenant_id + idempotency_key
     stmt = select(Event).where(
-        Event.tenant_id == uuid.UUID(contract.tenant_id),
-        Event.idempotency_key == contract.idempotency_key
+        Event.tenant_id == uuid.UUID(contract.tenant_id), Event.idempotency_key == contract.idempotency_key
     )
     result = await db.execute(stmt)
     existing_event = result.scalar_one_or_none()
 
     if existing_event:
         logger.info(f"Duplicate event detected for key: {contract.idempotency_key}. Safely skipping.")
-        return EventIngestResponse(
-            accepted=True,
-            event_id=str(existing_event.id),
-            idempotency_key=contract.idempotency_key,
-            status="duplicate_ignored",
-            message="Event already ingested. Idempotency guaranteed."
-        ), False
+        return (
+            EventIngestResponse(
+                accepted=True,
+                event_id=str(existing_event.id),
+                idempotency_key=contract.idempotency_key,
+                status="duplicate_ignored",
+                message="Event already ingested. Idempotency guaranteed.",
+            ),
+            False,
+        )
 
     # 2. Persist new event to relational store
     db_event = Event(
@@ -51,7 +53,7 @@ async def ingest_event(db: AsyncSession, contract: NormalizedEventContract) -> T
         received_at=contract.received_at,
         correlation_id=contract.correlation_id,
         idempotency_key=contract.idempotency_key,
-        payload=contract.payload
+        payload=contract.payload,
     )
 
     db.add(db_event)
@@ -64,14 +66,17 @@ async def ingest_event(db: AsyncSession, contract: NormalizedEventContract) -> T
         "event_type": db_event.event_type,
         "source": db_event.source,
         "correlation_id": db_event.correlation_id,
-        "occurred_at": db_event.occurred_at.isoformat()
+        "occurred_at": db_event.occurred_at.isoformat(),
     }
     await redis_manager.publish_event(settings.REDIS_STREAM_EVENTS, stream_payload)
 
-    return EventIngestResponse(
-        accepted=True,
-        event_id=str(db_event.id),
-        idempotency_key=contract.idempotency_key,
-        status="ingested",
-        message="Event validated, persisted, and queued."
-    ), True
+    return (
+        EventIngestResponse(
+            accepted=True,
+            event_id=str(db_event.id),
+            idempotency_key=contract.idempotency_key,
+            status="ingested",
+            message="Event validated, persisted, and queued.",
+        ),
+        True,
+    )
