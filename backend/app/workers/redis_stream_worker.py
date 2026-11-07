@@ -37,6 +37,14 @@ class RedisStreamWorker:
         self._running = False
         self._client = None
 
+    @property
+    def running(self) -> bool:
+        return self._running
+
+    @running.setter
+    def running(self, val: bool):
+        self._running = val
+
     async def _init_redis(self):
         import redis.asyncio as aioredis
         self._client = aioredis.from_url(

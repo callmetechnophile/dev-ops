@@ -1,0 +1,24 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-restricted-role
+  namespace: devops-intelligence
+rules:
+  # Least privilege: Workload pods only have read permissions on ConfigMaps in their own namespace if needed
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backend-restricted-binding
+  namespace: devops-intelligence
+subjects:
+  - kind: ServiceAccount
+    name: backend-sa
+    namespace: devops-intelligence
+roleRef:
+  kind: Role
+  name: app-restricted-role
+  apiGroup: rbac.authorization.k8s.io

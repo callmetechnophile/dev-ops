@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-config
+  namespace: devops-intelligence
+data:
+  APP_NAME: "Predictive DevOps Intelligence Platform"
+  APP_ENV: "production"
+  API_V1_PREFIX: "/api/v1"
+  DEBUG: "false"
+  ENABLE_METRICS: "true"
+  REDIS_STREAM_EVENTS: "stream:devops:events"
+  REDIS_STREAM_DEAD_LETTER: "stream:devops:deadletter"
+  REDIS_CONSUMER_GROUP: "group:devops:intelligence"
+  REDIS_CONSUMER_NAME: "k8s-worker"
+  MAX_WEBHOOK_PAYLOAD_BYTES: "10485760"
+  NEXT_PUBLIC_API_URL: "/api/v1"
+  BACKEND_INTERNAL_URL: "http://backend-service:8000/api"

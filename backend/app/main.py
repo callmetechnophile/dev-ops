@@ -6,6 +6,7 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import DevOpsIntelligenceError
+from app.core.security_middleware import ProductionSecurityMiddleware
 from app.api.router import api_router
 from app.redis_client import redis_manager
 
@@ -39,6 +40,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Production Security & Observability Middleware
+app.add_middleware(ProductionSecurityMiddleware)
 
 
 @app.exception_handler(DevOpsIntelligenceError)

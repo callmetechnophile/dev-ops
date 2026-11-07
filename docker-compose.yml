@@ -37,6 +37,22 @@ services:
     networks:
       - devops_intel_net
 
+  # Migration runner container: runs decoupled before API starts
+  migration:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devops_intel_migration
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SYNC_DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@postgres:5432/devops_intelligence
+    entrypoint: ["alembic", "upgrade", "head"]
+    networks:
+      - devops_intel_net
+
   backend:
     build:
       context: ./backend
@@ -48,6 +64,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migration:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     environment:
@@ -58,8 +76,32 @@ services:
       SYNC_DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@postgres:5432/devops_intelligence
       REDIS_URL: redis://redis:6379/0
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-github-webhook-production-secret}
-    command: >
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    entrypoint: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks:
+      - devops_intel_net
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devops_intel_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-production-devops-intel-secure-secret-key-32}
+      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@postgres:5432/devops_intelligence
+      SYNC_DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@postgres:5432/devops_intelligence
+      REDIS_URL: redis://redis:6379/0
+      REDIS_CONSUMER_NAME: worker-1
+    entrypoint: ["python", "-m", "app.worker"]
     networks:
       - devops_intel_net
 
