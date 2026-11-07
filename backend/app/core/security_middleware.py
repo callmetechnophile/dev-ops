@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Sensitive routes subject to strict rate limiting
 RATE_LIMITED_PREFIXES = [
+    "/api/v1/integrations/github/webhook",
     "/api/v1/webhooks",
     "/api/v1/approvals",
     "/api/v1/agent/executions",
