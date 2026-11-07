@@ -37,14 +37,29 @@ class RiskAssessment(Base, TimestampMixin, TenantMixin):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False, index=True)
     service_id = Column(GUID(), ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True)
+    repository_id = Column(GUID(), ForeignKey("repositories.id", ondelete="SET NULL"), nullable=True, index=True)
+    environment = Column(String(100), default="production", nullable=False, index=True)
+    
     overall_risk_score = Column(Float, nullable=False)  # 0.00 to 1.00
     risk_level = Column(String(20), nullable=False, index=True)  # LOW, MEDIUM, HIGH, CRITICAL
+    risk_category = Column(String(50), default="LOW", nullable=False, index=True)
     failure_probability = Column(Float, nullable=True)  # Calibrated ML probability or None if Stage A
     operational_impact_score = Column(Float, nullable=False)  # Downstream blast radius impact (0.0 to 1.0)
+    impact_category = Column(String(50), default="LOW", nullable=False)
+    affected_services = Column(JSON, default=list, nullable=False)
+
     rule_score = Column(Float, default=0.0, nullable=False)
     ml_score = Column(Float, nullable=True)
+    feature_snapshot = Column(JSON, default=dict, nullable=False)
     triggered_rules = Column(JSON, default=list, nullable=False)
     supporting_records = Column(JSON, default=list, nullable=False)
+    supporting_incident_ids = Column(JSON, default=list, nullable=False)
+    model_version = Column(String(100), nullable=True)
+    calibration_version = Column(String(100), nullable=True)
+    explanation = Column(Text, nullable=True)
+    assessment_status = Column(String(50), default="COMPLETED", nullable=False)
+    
+    assessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     evaluated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     deployment = relationship("Deployment", back_populates="risk_assessments")

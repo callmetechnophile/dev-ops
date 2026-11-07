@@ -273,3 +273,85 @@ export async function fetchEvents() {
   if (!res.ok) throw new Error("Failed to fetch events");
   return res.json();
 }
+
+// --- Milestone 4 Predictive Risk Intelligence APIs ---
+
+export async function fetchRiskAssessments(params?: { service_id?: string; risk_level?: string; environment?: string }) {
+  let url = `${API_BASE}/risk/assessments`;
+  const query = new URLSearchParams();
+  if (params?.service_id) query.append("service_id", params.service_id);
+  if (params?.risk_level) query.append("risk_level", params.risk_level);
+  if (params?.environment) query.append("environment", params.environment);
+  if (query.toString()) url += `?${query.toString()}`;
+
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch risk assessments");
+  return res.json();
+}
+
+export async function fetchRiskAssessment(id: string) {
+  const res = await fetch(`${API_BASE}/risk/assessments/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Risk assessment ${id} not found`);
+  return res.json();
+}
+
+export async function triggerRiskAssessment(deploymentId: string) {
+  const res = await fetch(`${API_BASE}/risk/assessments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deployment_id: deploymentId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to trigger risk assessment");
+  }
+  return res.json();
+}
+
+export async function fetchRiskExplanation(id: string) {
+  const res = await fetch(`${API_BASE}/risk/assessments/${id}/explanation`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function fetchRiskSimilarIncidents(id: string) {
+  const res = await fetch(`${API_BASE}/risk/assessments/${id}/similar-incidents`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchModelStatus() {
+  const res = await fetch(`${API_BASE}/risk/models/status`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function fetchModels() {
+  const res = await fetch(`${API_BASE}/risk/models`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchModelEvaluation(version: string) {
+  const res = await fetch(`${API_BASE}/risk/models/${version}/evaluation`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function triggerModelTraining() {
+  const res = await fetch(`${API_BASE}/risk/models/train`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Model training failed");
+  }
+  return res.json();
+}
+
+export async function fetchDeploymentImpact(deploymentId: string) {
+  const res = await fetch(`${API_BASE}/risk/impact/${deploymentId}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.json();
+}

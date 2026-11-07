@@ -1,7 +1,7 @@
 from app.models.base import GUID, TimestampMixin, TenantMixin
 from app.models.organization import Tenant, Organization, User
 from app.models.service import Repository, Service, Environment, ServiceDependency
-from app.models.deployment import Commit, Change, Build, Deployment, InfrastructureChange
+from app.models.deployment import Commit, Change, Build, Deployment, InfrastructureChange, DeploymentOutcomeLabel
 from app.models.event import Event
 from app.models.webhook_delivery import WebhookDelivery
 from app.models.github_entities import PullRequest, WorkflowRun, WorkflowJob, DeploymentEvent
@@ -33,6 +33,7 @@ __all__ = [
     "Change",
     "Build",
     "Deployment",
+    "DeploymentOutcomeLabel",
     "InfrastructureChange",
     "Event",
     "WebhookDelivery",

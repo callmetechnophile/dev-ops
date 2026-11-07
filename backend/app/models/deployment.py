@@ -99,6 +99,22 @@ class Deployment(Base, TimestampMixin, TenantMixin):
     infrastructure_changes = relationship("InfrastructureChange", back_populates="deployment")
     risk_assessments = relationship("RiskAssessment", back_populates="deployment")
     incidents = relationship("Incident", back_populates="deployment")
+    outcome_label = relationship("DeploymentOutcomeLabel", back_populates="deployment", uselist=False, cascade="all, delete-orphan")
+
+
+class DeploymentOutcomeLabel(Base, TimestampMixin, TenantMixin):
+    __tablename__ = "deployment_outcome_labels"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deployment_id = Column(GUID(), ForeignKey("deployments.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    observation_window_minutes = Column(Integer, default=60, nullable=False)
+    outcome_label = Column(String(50), nullable=False, index=True)  # FAILED, SUCCEEDED, CENSORED
+    failure_reason = Column(Text, nullable=True)
+    evidence_references = Column(JSON, default=dict, nullable=False)
+    verification_status = Column(String(50), default="VERIFIED", nullable=False)  # VERIFIED, UNVERIFIED
+    dataset_version = Column(String(50), default="v1.0", nullable=False, index=True)
+
+    deployment = relationship("Deployment", back_populates="outcome_label")
 
 
 class InfrastructureChange(Base, TimestampMixin, TenantMixin):
